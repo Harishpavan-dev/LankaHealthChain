@@ -10,16 +10,17 @@ import { AppModule } from './app.module';
 import { randomUUID } from 'node:crypto';
 import { ApiExceptionFilter } from './common/filters/api-exception.filter';
 import type { Request, Response, NextFunction } from 'express';
+import { parseCorsOrigins, parseListenPort, requiredConfig } from '@lhc/shared/runtime-config';
 
 async function main() {
-  if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL not configured');
+  requiredConfig('DATABASE_URL');
   if (process.env.NODE_ENV === 'production' && process.env.CONSENT_MODE === 'local-demo')
     throw new Error('local-demo consent mode prohibited in production');
-  if (!process.env.OIDC_ISSUER) throw new Error('OIDC_ISSUER not configured');
-  if (!process.env.OIDC_AUDIENCE) throw new Error('OIDC_AUDIENCE not configured');
+  requiredConfig('OIDC_ISSUER');
+  requiredConfig('OIDC_AUDIENCE');
   for (const code of ['NORTHERN','JAFFNA','VENUS']) {
-    const key = process.env[`HOSPITAL_${code}_TOKEN_SECRET`];
-    if (!key || key.length < 32) throw new Error(`HOSPITAL_${code}_TOKEN_SECRET must be at least 32 characters`);
+    const key = requiredConfig(`HOSPITAL_${code}_TOKEN_SECRET`);
+    if (Buffer.byteLength(key, 'utf8') < 32) throw new Error(`HOSPITAL_${code}_TOKEN_SECRET must be at least 32 characters`);
   }
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   // JSON parser must accept the 256 KiB synthetic FHIR validator cap, but no larger uploads.
@@ -36,7 +37,7 @@ async function main() {
   app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
   app.useGlobalFilters(new ApiExceptionFilter());
-  const origins = (process.env.CORS_ORIGINS || 'http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:5177,http://localhost:5178').split(',');
+  const origins = parseCorsOrigins(process.env.CORS_ORIGINS, process.env.NODE_ENV === 'production');
   app.enableCors({ origin: origins, methods: ['GET','POST','PATCH','OPTIONS'], allowedHeaders: ['Authorization','Content-Type','Idempotency-Key'], credentials: false });
   // Swagger UI displays the same version-controlled contract validated in CI.
   if (process.env.NODE_ENV !== 'production') {
@@ -44,6 +45,6 @@ async function main() {
     const contract = JSON.parse(readFileSync(contractPath, 'utf8')) as OpenAPIObject;
     SwaggerModule.setup('/api/docs', app, contract);
   }
-  await app.listen(Number(process.env.PORT || 3000), process.env.HOST || '127.0.0.1');
+  await app.listen(parseListenPort(process.env.PORT), process.env.HOST || '127.0.0.1');
 }
 main().catch(e => { console.error('Startup failed:', e.message); process.exitCode = 1; });

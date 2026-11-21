@@ -2,11 +2,12 @@
 /** Requires a LOCAL running Keycloak/NestJS/PostgreSQL synthetic demo stack.
  * Uses only synthetic identities. No live Cardano, Midnight or clinical PHI.
  */
-const base=process.env.LHC_SMOKE_API||'http://127.0.0.1:3000';
-const kc=process.env.LHC_SMOKE_KEYCLOAK||'http://127.0.0.1:8080';
+const base=process.env.LHC_SMOKE_API||process.env.VITE_API_URL?.replace(/\/api\/v1\/?$/,'')||(()=>{throw Error('Set LHC_SMOKE_API or VITE_API_URL')})();
+const kc=process.env.LHC_SMOKE_KEYCLOAK||process.env.VITE_OIDC_URL||(()=>{throw Error('Set LHC_SMOKE_KEYCLOAK or VITE_OIDC_URL')})();
 if(process.env.LHC_ACCEPT_SYNTHETIC_WRITE!=='YES')throw Error('Set LHC_ACCEPT_SYNTHETIC_WRITE=YES for demo governance writes');
 for(const uri of [base,kc])if(!['localhost','127.0.0.1','::1'].includes(new URL(uri).hostname))
  throw Error('Governance E2E restricted to loopback synthetic environment');
+function requiredDemo(name){const v=process.env[name];if(!v)throw Error(`${name} missing; source private .env`);return v;}
 async function token(username,password){
  const response=await fetch(kc+'/realms/lankahealthchain/protocol/openid-connect/token',{
   method:'POST',redirect:'error',headers:{'content-type':'application/x-www-form-urlencoded'},
@@ -21,12 +22,27 @@ async function call(method,path,bearer,expected=200,body){
  if(response.status!==expected)throw Error(`${method} ${path.split('?')[0]}: expected ${expected}, received ${response.status}`);
  return response.json();
 }
-const patient=await token('patient.arun','DemoPatient123!');
-const doctor=await token('doctor.venus','DemoDoctor123!');
-const operator=await token('hospital.venus','DemoHospital123!');
-const auditor=await token('auditor.demo','DemoAuditor123!');
-const researcher=await token('researcher.demo','DemoResearch123!');
-const admin=await token('admin.network','DemoAdmin123!');
+const patient=await token('patient.arun',requiredDemo('LHC_DEMO_PATIENT_PASSWORD'));
+const doctor=await token('doctor.venus',requiredDemo('LHC_DEMO_DOCTOR_PASSWORD'));
+const operator=await token('hospital.venus',requiredDemo('LHC_DEMO_HOSPITAL_PASSWORD'));
+const auditor=await token('auditor.demo',requiredDemo('LHC_DEMO_AUDITOR_PASSWORD'));
+const researcher=await token('researcher.demo',requiredDemo('LHC_DEMO_RESEARCHER_PASSWORD'));
+const admin=await token('admin.network',requiredDemo('LHC_DEMO_ADMIN_PASSWORD'));
+// Check the dedicated worker is alive and its telemetry has no clinical data.
+let workerState;
+for(let attempt=0;attempt<30;attempt++){
+ workerState=await call('GET','/admin/worker-status',admin);
+ if(workerState.status==='healthy')break;
+ await new Promise(resolve=>setTimeout(resolve,2000));
+}
+if(workerState?.worker!=='cardano-anchor-preparer' || workerState.status!=='healthy' ||
+ workerState.clinicalDataExposed!==false ||
+ !Number.isSafeInteger(workerState.queued) || !Number.isSafeInteger(workerState.deadLettered) ||
+ 'patientId' in workerState || 'privateKey' in workerState || 'inclusionProof' in workerState)
+ throw Error('Worker status unhealthy or unsafe');
+await call('GET','/admin/worker-status',operator,403);
+await call('GET','/admin/worker-status',auditor,403);
+console.log('PASS: Dedicated worker is healthy and monitoring does not expose clinical information');
 const assignments=await call('GET','/hospital-admin/hospitals',operator);
 if(assignments.length!==1||assignments[0].hospital.code!=='venus')throw Error('Scoped membership incorrect');
 await call('GET','/hospital-admin/hospitals/northern/overview',operator,403);

@@ -7,8 +7,8 @@
  */
 import {randomUUID} from 'node:crypto';
 const allowedHost = u => ['localhost','127.0.0.1','::1'].includes(new URL(u).hostname);
-const origin = process.env.LHC_SMOKE_API || 'http://127.0.0.1:3000';
-const kc = process.env.LHC_SMOKE_KEYCLOAK || 'http://127.0.0.1:8080';
+const origin = process.env.LHC_SMOKE_API || process.env.VITE_API_URL?.replace(/\/api\/v1\/?$/, '') || (()=>{throw Error('Set LHC_SMOKE_API or VITE_API_URL')})();
+const kc = process.env.LHC_SMOKE_KEYCLOAK || process.env.VITE_OIDC_URL || (()=>{throw Error('Set LHC_SMOKE_KEYCLOAK or VITE_OIDC_URL')})();
 if (process.env.LHC_ACCEPT_SYNTHETIC_WRITE !== 'YES') {
  console.error('Refusing synthetic DB writes. Explicitly set LHC_ACCEPT_SYNTHETIC_WRITE=YES');
  process.exit(2);
@@ -39,9 +39,9 @@ async function call(method,path,accessToken,body,expected=200,extraHeaders={}){
 }
 function verify(expr,message){if(!expr)throw new Error(message);}
 async function main(){
- const doctor=await token('doctor.venus',process.env.LHC_DEMO_DOCTOR_PASSWORD||'DemoDoctor123!');
- const patient=await token('patient.arun',process.env.LHC_DEMO_PATIENT_PASSWORD||'DemoPatient123!');
- const admin=await token('admin.network',process.env.LHC_DEMO_ADMIN_PASSWORD||'DemoAdmin123!');
+ const doctor=await token('doctor.venus',process.env.LHC_DEMO_DOCTOR_PASSWORD||(()=>{throw Error('LHC_DEMO_DOCTOR_PASSWORD is required')})());
+ const patient=await token('patient.arun',process.env.LHC_DEMO_PATIENT_PASSWORD||(()=>{throw Error('LHC_DEMO_PATIENT_PASSWORD is required')})());
+ const admin=await token('admin.network',process.env.LHC_DEMO_ADMIN_PASSWORD||(()=>{throw Error('LHC_DEMO_ADMIN_PASSWORD is required')})());
  console.log('PASS: Keycloak issued patient, doctor and administrator demo access tokens');
  const dependencyHealth=await call('GET','/admin/dependencies',admin);
  verify(dependencyHealth.status==='ready' && Array.isArray(dependencyHealth.hospitals) &&

@@ -24,7 +24,8 @@ jobs:
       - name: Verify separate hospital PostgreSQL readiness endpoints
         run: |
           set -eu
-          for entry in hospital-northern:4101 hospital-jaffna:4102 hospital-venus:4103; do
+          set -a; . ./.env; set +a
+          for entry in "hospital-northern:$HOSPITAL_NORTHERN_PORT" "hospital-jaffna:$HOSPITAL_JAFFNA_PORT" "hospital-venus:$HOSPITAL_VENUS_PORT"; do
             service="${entry%%:*}"
             port="${entry##*:}"
             ready=0
@@ -54,15 +55,21 @@ jobs:
       - name: Verify API readiness and Keycloak discovery
         env:
           LHC_HEALTH_ATTEMPTS: '60'
-        run: node scripts/qa/live-smoke.mjs
+        run: |
+          set -a; . ./.env; set +a
+          node scripts/qa/live-smoke.mjs
       - name: Execute actual synthetic consent + hospital HTTP journey
         env:
           LHC_ACCEPT_SYNTHETIC_WRITE: 'YES'
-        run: node scripts/qa/live-flow.mjs
+        run: |
+          set -a; . ./.env; set +a
+          node scripts/qa/live-flow.mjs
       - name: Verify all new governance roles, DB tenant isolation, grant revocation and audit privacy
         env:
           LHC_ACCEPT_SYNTHETIC_WRITE: 'YES'
-        run: node scripts/qa/live-governance.mjs
+        run: |
+          set -a; . ./.env; set +a
+          node scripts/qa/live-governance.mjs
       - name: Show container status without secrets on failure
         if: failure()
         run: |

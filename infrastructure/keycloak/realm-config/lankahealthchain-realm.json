@@ -32,22 +32,8 @@
       "publicClient": true,
       "protocol": "openid-connect",
       "standardFlowEnabled": true,
-      "redirectUris": [
-        "http://localhost:5173/*",
-        "http://localhost:5174/*",
-        "http://localhost:5175/*",
-        "http://localhost:5176/*",
-        "http://localhost:5177/*",
-        "http://localhost:5178/*"
-      ],
-      "webOrigins": [
-        "http://localhost:5173",
-        "http://localhost:5174",
-        "http://localhost:5175",
-        "http://localhost:5176",
-        "http://localhost:5177",
-        "http://localhost:5178"
-      ],
+      "redirectUris": [],
+      "webOrigins": [],
       "protocolMappers": [
         {
           "name": "lhc-api-audience",
@@ -101,7 +87,7 @@
       "credentials": [
         {
           "type": "password",
-          "value": "DemoPatient123!",
+          "value": "${LHC_DEMO_PATIENT_PASSWORD}",
           "temporary": false
         }
       ],
@@ -118,7 +104,7 @@
       "credentials": [
         {
           "type": "password",
-          "value": "DemoDoctor123!",
+          "value": "${LHC_DEMO_DOCTOR_PASSWORD}",
           "temporary": false
         }
       ],
@@ -135,7 +121,7 @@
       "credentials": [
         {
           "type": "password",
-          "value": "DemoAdmin123!",
+          "value": "${LHC_DEMO_ADMIN_PASSWORD}",
           "temporary": false
         }
       ],
@@ -152,7 +138,7 @@
       "credentials": [
         {
           "type": "password",
-          "value": "DemoHospital123!",
+          "value": "${LHC_DEMO_HOSPITAL_PASSWORD}",
           "temporary": false
         }
       ],
@@ -169,7 +155,7 @@
       "credentials": [
         {
           "type": "password",
-          "value": "DemoAuditor123!",
+          "value": "${LHC_DEMO_AUDITOR_PASSWORD}",
           "temporary": false
         }
       ],
@@ -186,7 +172,7 @@
       "credentials": [
         {
           "type": "password",
-          "value": "DemoResearch123!",
+          "value": "${LHC_DEMO_RESEARCHER_PASSWORD}",
           "temporary": false
         }
       ],

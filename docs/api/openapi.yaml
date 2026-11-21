@@ -1,13 +1,14 @@
 openapi: 3.1.0
 info:
   title: LankaHealthChain Demo API
-  version: 0.9.0
-  description: Synthetic-data-only interoperability prototype. Local consent is NOT Midnight ZK verification
-    and local integrity is NOT Cardano confirmation. Never connect real patient information. API
-    error responses include X-Request-ID. Optional doctor-scoped request idempotency. Pagination
-    added for verified doctor requests and patient consents. v0.9.0 adds scoped hospital operator
-    management, de-identified security audit views and restricted synthetic research aggregates.
-    NOT production clinical authorization.
+  version: 0.11.0
+  description: Synthetic-data-only interoperability prototype. Local consent is NOT Midnight ZK verification and local integrity
+    is NOT Cardano confirmation. Never connect real patient information. API error responses include X-Request-ID. Optional
+    doctor-scoped request idempotency. Pagination added for verified doctor requests and patient consents. v0.9.0 adds scoped
+    hospital operator management, de-identified security audit views and restricted synthetic research aggregates. NOT production
+    clinical authorization. v0.10.0 adds dedicated PostgreSQL-backed offline anchor worker monitoring, without blockchain
+    signing or PHI exposure. v0.11.0 moves deployment coordinates to validated environment config and randomizes synthetic
+    Keycloak demo credentials; no new clinical capability.
 servers:
 - url: http://localhost:3000/api/v1
   description: Loopback-only development demo
@@ -152,8 +153,8 @@ paths:
       - Access
       operationId: createAccessRequest
       summary: Create scoped access request
-      description: Patient approval deadline is 24h. This does not grant consent. Optional Idempotency-Key
-        deduplicates retries across API replicas; reuse with different body returns 409.
+      description: Patient approval deadline is 24h. This does not grant consent. Optional Idempotency-Key deduplicates retries
+        across API replicas; reuse with different body returns 409.
       x-required-role: verified-doctor
       responses:
         '201':
@@ -228,8 +229,8 @@ paths:
           minLength: 8
           maxLength: 128
           pattern: ^[A-Za-z0-9_-]+$
-        description: Opaque doctor-scoped retry key; same key + changed request returns 409. Concurrent
-          retries share the same request ID.
+        description: Opaque doctor-scoped retry key; same key + changed request returns 409. Concurrent retries share the
+          same request ID.
   /access-requests/mine:
     get:
       tags:
@@ -297,8 +298,8 @@ paths:
       - Record exchange
       operationId: getRequestRecords
       summary: Retrieve authorized synthetic FHIR records
-      description: Fails if over 100 records; use paged endpoint. Rechecks consent before each release
-        and after the full batch.
+      description: Fails if over 100 records; use paged endpoint. Rechecks consent before each release and after the full
+        batch.
       x-required-role: verified-doctor + active scoped consent
       responses:
         '200':
@@ -366,8 +367,7 @@ paths:
       - Record exchange
       operationId: getRequestRecordsPage
       summary: Retrieve page of authorized FHIR records
-      description: Cursor is scoped to the request patient and requested resource types; no PHI in
-        public chain.
+      description: Cursor is scoped to the request patient and requested resource types; no PHI in public chain.
       x-required-role: verified-doctor + active scoped consent
       responses:
         '200':
@@ -845,8 +845,7 @@ paths:
       - Consent
       operationId: approveAccessRequest
       summary: Approve synthetic local-demo request
-      description: LOCAL_DEMO_NOT_MIDNIGHT only; fails closed if consent mode is not local-demo.
-        Not a ZK proof.
+      description: LOCAL_DEMO_NOT_MIDNIGHT only; fails closed if consent mode is not local-demo. Not a ZK proof.
       x-required-role: patient
       responses:
         '201':
@@ -1044,8 +1043,8 @@ paths:
       - Records
       operationId: createSyntheticRecord
       summary: Create a synthetic record at treating hospital
-      description: Caller-provided Patient links are discarded and replaced with hospital-local identity.
-        No clinical payload is persisted in Core. Retry with identical resource id/content only.
+      description: Caller-provided Patient links are discarded and replaced with hospital-local identity. No clinical payload
+        is persisted in Core. Retry with identical resource id/content only.
       x-required-role: verified-doctor
       responses:
         '201':
@@ -1124,8 +1123,8 @@ paths:
       - Verification
       operationId: getRecordVerification
       summary: Check commitment or confirmed Preprod anchor
-      description: onchainVerified=true only after Blockfrost Preprod metadata check. Otherwise local
-        commitment or UNVERIFIED status.
+      description: onchainVerified=true only after Blockfrost Preprod metadata check. Otherwise local commitment or UNVERIFIED
+        status.
       x-required-role: owner patient OR scoped verified doctor
       responses:
         '200':
@@ -1402,8 +1401,8 @@ paths:
       - Administration
       operationId: getAdminDependencies
       summary: Check source-hospital database readiness (admin only)
-      description: Runs a bounded, pinned request against each enrolled synthetic hospital readiness
-        endpoint. No internal URLs or medical data are exposed.
+      description: Runs a bounded, pinned request against each enrolled synthetic hospital readiness endpoint. No internal
+        URLs or medical data are exposed.
       x-required-role: network_admin
       responses:
         '200':
@@ -2256,8 +2255,7 @@ paths:
       - Hospital administration
       operationId: enrollScopedDoctor
       summary: Register an inactive, unverified clinician at own institution
-      description: Database-enrolled hospital administrator only; creates no Keycloak account and
-        cannot activate doctor automatically.
+      description: Database-enrolled hospital administrator only; creates no Keycloak account and cannot activate doctor automatically.
       x-required-role: hospital_admin
       security:
       - bearerAuth: []
@@ -2298,14 +2296,74 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /admin/worker-status:
+    get:
+      tags:
+      - Administration
+      operationId: getAdminWorkerStatus
+      summary: Read nonclinical background worker and outbox status
+      description: Requires network_admin; reports worker heartbeat, queued and dead-letter outbox counts and pending Cardano
+        batch preparation. No private keys, proof files, clinical records or hospital credentials are returned. Offline preparation
+        does not imply a Preprod transaction.
+      x-required-role: network_admin
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkerStatus'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Not authorized or out of scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: State or integrity conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '429':
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Dependency not ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - bearerAuth: []
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: Keycloak OIDC access token, audience lhc-api; role & patient/doctor scope verified
-        by backend
+      description: Keycloak OIDC access token, audience lhc-api; role & patient/doctor scope verified by backend
   schemas:
     ApiError:
       type: object
@@ -3208,3 +3266,58 @@ components:
           format: date-time
         mode:
           const: SYNTHETIC_DEMO
+    WorkerStatus:
+      type: object
+      additionalProperties: false
+      required:
+      - worker
+      - status
+      - queued
+      - deadLettered
+      - prepared
+      - totalPrepared
+      - onchainSubmission
+      - clinicalDataExposed
+      properties:
+        worker:
+          type: string
+          const: cardano-anchor-preparer
+        status:
+          type: string
+          enum:
+          - offline
+          - stale
+          - degraded
+          - healthy
+        queued:
+          type: integer
+          minimum: 0
+        deadLettered:
+          type: integer
+          minimum: 0
+        prepared:
+          type: integer
+          minimum: 0
+        lastSeenAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        lastSuccessAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        lastErrorCode:
+          type:
+          - string
+          - 'null'
+        totalPrepared:
+          type: integer
+          minimum: 0
+        onchainSubmission:
+          type: string
+          const: MANUAL_OPERATOR_REQUIRED
+        clinicalDataExposed:
+          type: boolean
+          const: false

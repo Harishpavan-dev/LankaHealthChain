@@ -1,4 +1,4 @@
-> **v0.9.0**: 39 implemented source-level API operations, including institution governance, de-identified security audits and synthetic-only research aggregates. Full running-server conformance tests still pending.
+> **v0.11.0**: 40 implemented source-level API operations, including institution governance, de-identified security audits and synthetic-only research aggregates. Full running-server conformance tests still pending.
 
 # HTTP API v1 – Developer documentation
 
@@ -16,7 +16,7 @@
 ## Authentication / authorization
 
 - Local Keycloak realm: `lankahealthchain`; audience: `lhc-api`; signature verified with Keycloak JWKS.
-- Role enforcement: `patient`, `doctor` or `network_admin`; verified doctor status is checked in Core PostgreSQL.
+- Role enforcement: `patient`, `doctor`, `network_admin`, `hospital_admin`, `security_auditor` or `researcher`; verified doctor status is checked in Core PostgreSQL.
 - Doctor accesses require patient-approved *local-demo* consent scoped to doctor, hospital, patient, purpose, resource type and expiry.
 - `LOCAL_DEMO_NOT_MIDNIGHT` is **not** a zero-knowledge proof. Real Midnight verification has not been integrated.
 - Patient identifiers in request paths, returned on-chain metadata and logs must never reveal actual identities. Use only synthetic data here.
@@ -62,7 +62,7 @@ The internal hospital service now also supports `GET /health/ready` which checks
 
 ## Postman Collection
 
-The version-controlled [`lankahealthchain.postman_collection.json`](lankahealthchain.postman_collection.json) contains **22** synthetic-only examples generated from the canonical API specification. Import it into Postman and set `accessToken` to a short-lived locally obtained development access token. Use **only** the local test stack. Do not export a collection with populated access tokens or real patient data.
+The version-controlled [`lankahealthchain.postman_collection.json`](lankahealthchain.postman_collection.json) contains **40** synthetic-only examples generated from the canonical API specification. Import it into Postman and set `accessToken` to a short-lived locally obtained development access token. Use **only** the local test stack. Do not export a collection with populated access tokens or real patient data.
 
 Regenerate after API contract changes with `pnpm docs:postman`. The unit suite asserts exact operation parity and deterministic output.
 
@@ -80,3 +80,25 @@ transaction is signed or submitted automatically**.
 
 Core and Hospital DB migrations add demo-specific FHIR identifier/record
 constraints. Do not use the minimal demo FHIR validator for clinical work.
+
+## Background worker and operational status (v0.10)
+
+The API supports `GET /api/v1/admin/worker-status` (network administrator only).
+It returns counters, heartbeat timestamps and a generic error code, **never patient
+records, private proof files, signing keys or hospital secrets**. A heartbeat
+indicates the *offline preparation process* is running, not that a Cardano
+transaction has reached Preprod. The worker needs `WORKER_POLL_MS` (5–600 seconds;
+default 15 seconds) for both worker and API process so stale-health detection
+uses the same cadence.
+
+The transaction outbox now has `nextAttemptAt`, `deadLetteredAt`, and
+`lastErrorCode`. Missing record references become dead-letter entries so they
+never block healthy records. Transient failures cause the worker to retry
+with bounded exponential backoff. Operator investigation is required before
+replaying dead-letter work. The service **never signs transactions**.
+
+## Deployment configuration (v0.11.0)
+
+All real runtime endpoints and ports come from `.env`, not source code. In particular, `CORS_ORIGINS`, `PORT`, `HOSPITAL_*_PORT`, `HOSPITAL_*_INTERNAL_URL`, `OIDC_ISSUER`, `OIDC_JWKS_INTERNAL_URL`, `VITE_API_URL`, `VITE_OIDC_URL`, and `CARDANO_METADATA_API_BASE_URL` are configurable. The Swagger `servers` entry remains a **documentation-only local demonstration example** and is not an application runtime default. The Postman `baseUrl` variable should be changed to match your authorized test environment.
+
+Keycloak demo account passwords and six redirect origins are generated into private runtime data via `node scripts/setup-local.mjs`. No production login or clinical proof integration is implied.

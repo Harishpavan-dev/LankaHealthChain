@@ -29,7 +29,7 @@ export class VerificationController {
   if(!anchor || anchor.status!=='CONFIRMED' || !anchor.cardanoTxHash || !anchor.inclusionProof)
     return {recordId:id,integrity:'LOCAL_COMMITMENT_ONLY',cardanoStatus:record.anchorStatus,onchainVerified:false};
   const projectId=process.env.BLOCKFROST_PREPROD_PROJECT_ID;
-  if(!projectId)return {recordId:id,cardanoStatus:'UNVERIFIED',onchainVerified:false,reason:'Preprod verification provider not configured'};
+  if(!projectId || !process.env.CARDANO_METADATA_API_BASE_URL)return {recordId:id,cardanoStatus:'UNVERIFIED',onchainVerified:false,reason:'Preprod verification provider not configured'};
   try {
     const verified=await checkPreprodAnchor(anchor.cardanoTxHash,anchor.inclusionProof as unknown as InclusionProof,projectId,record.integrityCommitment);
     return {recordId:id,cardanoStatus:verified?'CONFIRMED':'VERIFICATION_FAILED',

@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "LankaHealthChain Demo API",
-    "version": "0.9.0",
-    "description": "Synthetic-data-only interoperability prototype. Local consent is NOT Midnight ZK verification and local integrity is NOT Cardano confirmation. Never connect real patient information. API error responses include X-Request-ID. Optional doctor-scoped request idempotency. Pagination added for verified doctor requests and patient consents. v0.9.0 adds scoped hospital operator management, de-identified security audit views and restricted synthetic research aggregates. NOT production clinical authorization."
+    "version": "0.11.0",
+    "description": "Synthetic-data-only interoperability prototype. Local consent is NOT Midnight ZK verification and local integrity is NOT Cardano confirmation. Never connect real patient information. API error responses include X-Request-ID. Optional doctor-scoped request idempotency. Pagination added for verified doctor requests and patient consents. v0.9.0 adds scoped hospital operator management, de-identified security audit views and restricted synthetic research aggregates. NOT production clinical authorization. v0.10.0 adds dedicated PostgreSQL-backed offline anchor worker monitoring, without blockchain signing or PHI exposure. v0.11.0 moves deployment coordinates to validated environment config and randomizes synthetic Keycloak demo credentials; no new clinical capability."
   },
   "servers": [
     {
@@ -3742,6 +3742,104 @@
           }
         }
       }
+    },
+    "/admin/worker-status": {
+      "get": {
+        "tags": [
+          "Administration"
+        ],
+        "operationId": "getAdminWorkerStatus",
+        "summary": "Read nonclinical background worker and outbox status",
+        "description": "Requires network_admin; reports worker heartbeat, queued and dead-letter outbox counts and pending Cardano batch preparation. No private keys, proof files, clinical records or hospital credentials are returned. Offline preparation does not imply a Preprod transaction.",
+        "x-required-role": "network_admin",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkerStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid bearer token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not authorized or out of scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "State or integrity conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency not ready",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -5058,6 +5156,79 @@
           },
           "mode": {
             "const": "SYNTHETIC_DEMO"
+          }
+        }
+      },
+      "WorkerStatus": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "worker",
+          "status",
+          "queued",
+          "deadLettered",
+          "prepared",
+          "totalPrepared",
+          "onchainSubmission",
+          "clinicalDataExposed"
+        ],
+        "properties": {
+          "worker": {
+            "type": "string",
+            "const": "cardano-anchor-preparer"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "stale",
+              "degraded",
+              "healthy"
+            ]
+          },
+          "queued": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "deadLettered": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "prepared": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "lastSeenAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "lastSuccessAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "lastErrorCode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "totalPrepared": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "onchainSubmission": {
+            "type": "string",
+            "const": "MANUAL_OPERATOR_REQUIRED"
+          },
+          "clinicalDataExposed": {
+            "type": "boolean",
+            "const": false
           }
         }
       }

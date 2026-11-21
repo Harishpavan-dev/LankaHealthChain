@@ -900,6 +900,25 @@
           }
         }
       }
+    },
+    {
+      "name": "GET /admin/worker-status",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}/api/v1/admin/worker-status",
+        "description": "Read nonclinical background worker and outbox status. Required role: network_admin. Local synthetic-data demo only."
+      }
     }
   ]
 }

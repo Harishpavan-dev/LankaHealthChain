@@ -1,6 +1,6 @@
 {
   "name": "lankahealthchain",
-  "version": "0.9.0",
+  "version": "0.11.0",
   "private": true,
   "packageManager": "pnpm@10.18.0",
   "engines": {
@@ -35,7 +35,8 @@
     "dev:hospital-admin": "pnpm --filter @lhc/hospital-admin-portal dev",
     "dev:auditor": "pnpm --filter @lhc/security-auditor-portal dev",
     "dev:researcher": "pnpm --filter @lhc/researcher-portal dev",
-    "test:live-governance": "node scripts/qa/live-governance.mjs"
+    "test:live-governance": "node scripts/qa/live-governance.mjs",
+    "config:audit": "node scripts/qa/config-audit.mjs"
   },
   "devDependencies": {
     "typescript": "^5.9.0",

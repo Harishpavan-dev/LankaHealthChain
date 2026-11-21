@@ -3,11 +3,12 @@ import { api,authenticate } from '@lhc/web/auth';
 import { Shell,Gate,Metric } from '@lhc/web/components';
 type Hospital={id:string;code:string;name:string};
 type DependencyHealth={status:'ready'|'degraded';hospitals:{code:string;status:'ready'|'disabled'|'unavailable'}[];clinicalDataExposed:false};
+type WorkerStatus={status:'offline'|'stale'|'degraded'|'healthy';queued:number;deadLettered:number;prepared:number;lastSuccessAt:string|null;lastErrorCode:string|null;totalPrepared:number};
 type Summary={hospitals:number;verifiedDoctors:number;patients:number;recordReferences:number;pendingConsents:number;pendingAnchors:number;consentMode:string};
 type Operator={id:string;authSubject:string;active:boolean;hospital:{code:string;name:string}};
 type ResearchGrant={id:string;authSubject:string;projectName:string;active:boolean;expiresAt:string};
 export function App(){
- const [ready,setReady]=useState(false),[hospitals,setHospitals]=useState<Hospital[]>([]),[summary,setSummary]=useState<Summary|null>(null),[dependencies,setDependencies]=useState<DependencyHealth|null>(null),[error,setError]=useState('');
+ const [ready,setReady]=useState(false),[hospitals,setHospitals]=useState<Hospital[]>([]),[summary,setSummary]=useState<Summary|null>(null),[dependencies,setDependencies]=useState<DependencyHealth|null>(null),[worker,setWorker]=useState<WorkerStatus|null>(null),[error,setError]=useState('');
  const [operators,setOperators]=useState<Operator[]>([]),[grants,setGrants]=useState<ResearchGrant[]>([]),
  [operatorSubject,setOperatorSubject]=useState(''),[operatorHospital,setOperatorHospital]=useState('venus'),
  [researchSubject,setResearchSubject]=useState(''),[project,setProject]=useState('Synthetic interoperability assessment'),
@@ -26,12 +27,18 @@ export function App(){
  }
 
  useEffect(()=>{authenticate().then(setReady).catch(e=>setError(String(e)));},[]);
- useEffect(()=>{if(ready){void Promise.all([api<Hospital[]>('/hospitals'),api<Summary>('/admin/summary'),api<DependencyHealth>('/admin/dependencies')]).then(([h,s,d])=>{setHospitals(h);setSummary(s);setDependencies(d);}).catch(e=>setError(String(e)));}},[ready]);
+ useEffect(()=>{if(ready){void Promise.all([api<Hospital[]>('/hospitals'),api<Summary>('/admin/summary'),api<DependencyHealth>('/admin/dependencies'),api<WorkerStatus>('/admin/worker-status')]).then(([h,s,d,w])=>{setHospitals(h);setSummary(s);setDependencies(d);setWorker(w);}).catch(e=>setError(String(e)));}},[ready]);
  return <Gate ready={ready} role="Network Admin"><Shell title="Network overview" kicker="System administration" subtitle="Institution network and interoperability governance" role="Network Admin">
  {error&&<div className="notice error" role="alert">{error}</div>}
  {success&&<div className="notice" role="status">{success}</div>}
  <div className="grid"><Metric icon="⌂" label="Enrolled hospital simulators" value={hospitals.length}/><Metric icon="♧" label="API contract" value="v1"/><Metric icon="⚑" label="Pending Cardano anchors" value={summary?.pendingAnchors??'—'}/></div>
  {summary&&<div className="grid"><Metric icon="⚕" label="Verified clinicians" value={summary.verifiedDoctors}/><Metric icon="♙" label="Synthetic patients" value={summary.patients}/><Metric icon="▤" label="Record references" value={summary.recordReferences}/></div>}
+ <div className="section-head"><h2>Background processing</h2></div>
+ <div className="card" aria-label="Cardano preparation worker status">
+  <div className="record"><div><div className="record-title">Cardano batch preparation</div><div className="record-meta">Offline Merkle proofs only · on-chain signing is a separate operator action</div></div><span className="pill">{worker?.status.toUpperCase()??'NOT CHECKED'}</span></div>
+  {worker&&<div className="grid"><Metric icon="◷" label="Queued outbox events" value={worker.queued}/><Metric icon="▣" label="Prepared anchors" value={worker.prepared}/><Metric icon="!" label="Dead-letter events" value={worker.deadLettered}/></div>}
+  {worker?.lastErrorCode&&<p className="muted" role="status">Most recent worker error: {worker.lastErrorCode}</p>}
+ </div>
  <div className="section-head"><h2>Hospital operational readiness</h2></div>
  <div className="card" aria-label="Readiness summary">{dependencies?.hospitals.map(h=><div className="record" key={h.code}>
   <div><div className="record-title">{h.code.charAt(0).toUpperCase()+h.code.slice(1)} hospital API</div>

@@ -6,6 +6,7 @@ import { requireRole } from '../security/roles';
 import { CoreDbService } from '../database/db.service';
 import {EnrollOperatorDto,CreateResearchGrantDto,ResourceStatusDto} from './governance.dto';
 import { probeHospitalReadiness } from '@lhc/shared/hospital-readiness';
+import {ANCHOR_WORKER_ID,workerOperationalStatus,parseWorkerPollMs} from '@lhc/shared/worker-policy';
 /** Deliberately exposes only aggregate operational counts: no clinical payloads. */
 @ApiTags('administration') @ApiBearerAuth() @UseGuards(JwtGuard,ThrottlerGuard)
 @Controller({path:'admin',version:'1'})
@@ -23,6 +24,27 @@ export class AdminController {
   }));
   return {status:checks.every(c=>c.status==='ready')?'ready':'degraded',hospitals:checks,
    clinicalDataExposed:false};
+ }
+
+ /** Operational counters only; never returns clinical records, worker secrets or file paths. */
+ @Get('worker-status')
+ async workerStatus(@Req() req:AuthenticatedRequest){
+   requireRole(req.principal,'network_admin');
+   const now=new Date();
+   const [heartbeat,queued,deadLettered,prepared]=await Promise.all([
+     this.data.db.workerHeartbeat.findUnique({where:{id:ANCHOR_WORKER_ID}}),
+     this.data.db.outboxEvent.count({where:{eventType:'RECORD_REGISTERED',publishedAt:null,deadLetteredAt:null}}),
+     this.data.db.outboxEvent.count({where:{eventType:'RECORD_REGISTERED',deadLetteredAt:{not:null}}}),
+     this.data.db.recordAnchor.count({where:{status:'PENDING'}}),
+   ]);
+   return {worker:'cardano-anchor-preparer',
+     status:workerOperationalStatus(now,heartbeat?.lastSeenAt??null,parseWorkerPollMs(process.env.WORKER_POLL_MS),heartbeat?.lastErrorCode??null),
+     lastSeenAt:heartbeat?.lastSeenAt??null,
+     lastSuccessAt:heartbeat?.lastSuccessAt??null,
+     lastErrorCode:heartbeat?.lastErrorCode??null,
+     totalPrepared:heartbeat?.preparedTotal??0,
+     queued,deadLettered,prepared,
+     onchainSubmission:'MANUAL_OPERATOR_REQUIRED',clinicalDataExposed:false};
  }
 
  /** Enrollment is explicitly network-admin-controlled, and does not provision an IdP identity. */
