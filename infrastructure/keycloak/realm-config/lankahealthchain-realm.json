@@ -13,6 +13,15 @@
       },
       {
         "name": "network_admin"
+      },
+      {
+        "name": "hospital_admin"
+      },
+      {
+        "name": "security_auditor"
+      },
+      {
+        "name": "researcher"
       }
     ]
   },
@@ -26,12 +35,18 @@
       "redirectUris": [
         "http://localhost:5173/*",
         "http://localhost:5174/*",
-        "http://localhost:5175/*"
+        "http://localhost:5175/*",
+        "http://localhost:5176/*",
+        "http://localhost:5177/*",
+        "http://localhost:5178/*"
       ],
       "webOrigins": [
         "http://localhost:5173",
         "http://localhost:5174",
-        "http://localhost:5175"
+        "http://localhost:5175",
+        "http://localhost:5176",
+        "http://localhost:5177",
+        "http://localhost:5178"
       ],
       "protocolMappers": [
         {
@@ -126,6 +141,57 @@
       ],
       "realmRoles": [
         "network_admin"
+      ]
+    },
+    {
+      "id": "44444444-4444-4444-8444-444444444444",
+      "username": "hospital.venus",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "hospital.venus@example.invalid",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "DemoHospital123!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "hospital_admin"
+      ]
+    },
+    {
+      "id": "55555555-5555-4555-8555-555555555555",
+      "username": "auditor.demo",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "auditor.demo@example.invalid",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "DemoAuditor123!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "security_auditor"
+      ]
+    },
+    {
+      "id": "66666666-6666-4666-8666-666666666666",
+      "username": "researcher.demo",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "researcher.demo@example.invalid",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "DemoResearch123!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "researcher"
       ]
     }
   ]

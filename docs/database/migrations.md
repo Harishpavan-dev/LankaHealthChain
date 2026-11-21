@@ -54,4 +54,24 @@ Expected: 4 own-database connections succeed and 12 cross-database connections a
 
 ## v0.6 deployment condition
 
-This release contains **10 Core migrations** and **2 Hospital migrations**, each hospital migration executed independently against Northern, Jaffna and Venus. Apply `202611220010_access_request_idempotency` before running the updated API; the database uniqueness guarantee is necessary for concurrent request deduplication. In particular, do not treat static migration checks as a replacement for real `prisma migrate deploy` on an isolated PostgreSQL instance.
+v0.6 contains **10 Core migrations** and **2 Hospital migrations**; v0.7 adds an **11th Core migration**, each hospital migration executed independently against Northern, Jaffna and Venus. Apply `202611220010_access_request_idempotency` before running the updated API; the database uniqueness guarantee is necessary for concurrent request deduplication. In particular, do not treat static migration checks as a replacement for real `prisma migrate deploy` on an isolated PostgreSQL instance.
+
+### v0.7 migration
+The Core-only `202611220011_history_pagination_indexes/migration.sql` adds descending `(owner, createdAt, id)` indexes for verified doctor request history and patient consent history. This migration **must be applied** before evaluating multi-page query performance; it is not executed in the offline authoring environment. No Hospital DB schema change for v0.7.
+
+## v0.8 additional migrations – database defense in depth
+
+- **Core 202611220012_clinical_locator_constraints** validates FHIR-safe remote
+  record identifiers, allowed synthetic resource types, and locally mapped
+  patient references. Supports a *demonstration subset*, not all FHIR types.
+- **Core 202611220013_anchor_batch_lookup** indexes `RecordAnchor(batchId,
+  status)` for crash-recovery queries over prepared Cardano batches.
+- **Hospital 202611220003_clinical_record_constraints** checks hospital-side
+  synthetic FHIR record IDs, resource type, local patient ID, and JSON
+  `resourceType`/`id` envelope alignment.
+
+These SQL files are **authored, not applied** in this coding environment.
+Apply them using `pnpm db:migrate` against an empty local synthetic stack,
+then run `pnpm db:verify-isolation`, inspect `_prisma_migrations` in each of
+four databases, and run `node scripts/qa/live-flow.mjs` with the opt-in
+synthetic-write flag. Do not modify already-applied historical SQL migrations.

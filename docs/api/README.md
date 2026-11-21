@@ -1,3 +1,5 @@
+> **v0.9.0**: 39 implemented source-level API operations, including institution governance, de-identified security audits and synthetic-only research aggregates. Full running-server conformance tests still pending.
+
 # HTTP API v1 – Developer documentation
 
 **This documentation covers all currently implemented endpoints in the synthetic-data-only LankaHealthChain prototype.** It is not a production FHIR R4 conformance statement. The machine-readable **canonical API contract** is [`openapi.json`](openapi.json), with [`openapi.yaml`](openapi.yaml) as a readable copy.
@@ -46,3 +48,35 @@ The three hospitals are simulated integrations, not real healthcare institution 
 Run `node scripts/qa/verify-openapi.mjs` to check every implemented NestJS endpoint has a matching operation and that OpenAPI references and security requirements are valid. This is **static contract QA**, not a live HTTP test.
 
 Swagger UI development route `/api/docs` now serves the version-controlled `openapi.json`. It is not enabled for production mode.
+
+## v0.7 additional history pagination
+
+Two cursor-based routes avoid a silent 100-row cap for long-lived records:
+
+- `GET /api/v1/access-requests/mine/page?limit=25&cursor=<last-id>` — verified doctor only; the cursor must belong to that doctor.
+- `GET /api/v1/patients/me/consents/page?limit=25&cursor=<last-id>` — patient only; the cursor must belong to that patient.
+
+Both respond `{ "items": [...], "nextCursor": "uuid-or-null" }`. A null cursor means no more pages. Limits must be integers between 1 and 100. On invalid or cross-principal cursors the API responds 400, without exposing another person's history. Use `docs/api/openapi.json` as the source of truth.
+
+The internal hospital service now also supports `GET /health/ready` which checks a live PostgreSQL query. It is not a public patient-data endpoint.
+
+## Postman Collection
+
+The version-controlled [`lankahealthchain.postman_collection.json`](lankahealthchain.postman_collection.json) contains **22** synthetic-only examples generated from the canonical API specification. Import it into Postman and set `accessToken` to a short-lived locally obtained development access token. Use **only** the local test stack. Do not export a collection with populated access tokens or real patient data.
+
+Regenerate after API contract changes with `pnpm docs:postman`. The unit suite asserts exact operation parity and deterministic output.
+
+## v0.8 operations and recovery
+
+`GET /api/v1/admin/dependencies` requires the network-admin role. It probes
+only operator-pinned hospital readiness endpoints with a three-second timeout
+and strict 2 KiB response limit. A failed/missing source reports `unavailable`
+or `disabled`; internal hostnames and patient information are never returned.
+
+Cardano batch preparation now commits proof rows before writing private files.
+Subsequent worker invocations regenerate missing files from complete committed
+Merkle proofs. This remains an OFFLINE preparation tool: **no Cardano
+transaction is signed or submitted automatically**.
+
+Core and Hospital DB migrations add demo-specific FHIR identifier/record
+constraints. Do not use the minimal demo FHIR validator for clinical work.

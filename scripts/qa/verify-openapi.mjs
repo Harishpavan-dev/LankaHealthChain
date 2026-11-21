@@ -15,7 +15,7 @@ for(const name of readdirSync(new URL('apps/api/src/modules/',base)).filter(x=>x
  const ctrl=code.match(/@Controller\(([^)]*)\)/);
  if(!ctrl) fail(`Missing controller annotation in ${file}`);
  const path=ctrl[1].match(/path\s*:\s*['"]([^'"]+)['"]/)?.[1] || (ctrl[1].trim().startsWith("'") ? ctrl[1].trim().slice(1).split("'")[0] : '');
- for(const hit of code.matchAll(/@(Get|Post)\(([^)]*)\)/g)){
+ for(const hit of code.matchAll(/@(Get|Post|Patch|Put|Delete)\(([^)]*)\)/g)){
   const method=hit[1].toLowerCase();
   const inner=hit[2].trim();
   const suffix=inner.match(/['"]([^'"]+)['"]/)?.[1] || '';
@@ -25,6 +25,8 @@ for(const name of readdirSync(new URL('apps/api/src/modules/',base)).filter(x=>x
   routeMap.set(key,file);
  }
 }
+const operationIds=new Set();
+const ROLES=new Set(['public','authenticated','patient','verified-doctor','network_admin','verified-doctor + active scoped consent','owner patient OR scoped verified doctor','hospital_admin','security_auditor','researcher']);
 let count=0;
 const securityNames=new Set(Object.keys(doc.components.securitySchemes));
 for(const [path,methods] of Object.entries(doc.paths)){
@@ -33,6 +35,15 @@ for(const [path,methods] of Object.entries(doc.paths)){
   if(!routeMap.has(key))fail(`Documented operation absent in NestJS controller: ${key}`);
   routeMap.delete(key); count++;
   if(!endpoint.operationId||!endpoint.summary||!endpoint['x-required-role'])fail(`Missing operation documentation: ${key}`);
+  if(operationIds.has(endpoint.operationId))fail(`Duplicate operationId ${endpoint.operationId}`);
+  operationIds.add(endpoint.operationId);
+  if(!ROLES.has(endpoint['x-required-role']))fail(`Unrecognized API role ${endpoint['x-required-role']} for ${key}`);
+  if(path.endsWith('/page')){
+   const params=endpoint.parameters||[];
+   for(const field of ['limit','cursor']){
+    if(!params.some(x=>x.in==='query' && x.name===field))fail(`Missing ${field} pagination query in ${key}`);
+   }
+  }
   if(endpoint['x-required-role']!=='public' && !(endpoint.security||[]).some(x=>Object.keys(x).some(name=>securityNames.has(name))))fail(`Unauthenticated protected endpoint in spec: ${key}`);
   if(endpoint['x-required-role']==='public' && (endpoint.security||[]).length)fail(`Public health endpoint claims auth: ${key}`);
   const responseKeys=Object.keys(endpoint.responses);

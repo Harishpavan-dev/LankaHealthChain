@@ -5,6 +5,7 @@
 - [ ] Core and hospital Prisma migrations applied, `_prisma_migrations` has matching histories
 - [ ] Synthetic seeds loaded; Arun plus 100 fictional patients (101 total), 504 synthetic resources spread over three hospitals
 - [ ] Keycloak demo patient/doctor/admin access tokens verify against JWKS
+- [ ] Network admin `GET /api/v1/admin/dependencies` reports all 3 hospital DB readiness checks; patient receives 403; no URLs disclosed
 - [ ] `GET /api/v1/health` returns 200; Swagger docs are available only in development
 - [ ] Wrong doctor, unknown patient, wrong hospital and invalid resource creation fail
 - [ ] New Observation created in Venus hospital appears in Arun timeline

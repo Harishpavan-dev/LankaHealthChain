@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
-import { Module, Controller, Get, Post, Body, Param, Query, Req, UnauthorizedException, ForbiddenException, NotFoundException, ConflictException, BadRequestException, Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Module, Controller, Get, Post, Body, Param, Query, Req, UnauthorizedException, ForbiddenException, NotFoundException, ConflictException, BadRequestException, ServiceUnavailableException, Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import type { Request, Response, NextFunction } from 'express';
 import { createPrismaClient } from '@lhc/hospital-database';
 import { verifyRecordToken } from '@lhc/shared/internal-token';
@@ -34,6 +34,11 @@ class HospitalDb implements OnModuleInit, OnModuleDestroy {
 class HospitalController {
  constructor(private readonly database:HospitalDb) {}
  @Get('health') health(){ return {status:'ok', hospital:process.env.HOSPITAL_CODE, clinicalUse:false}; }
+ @Get('health/ready') async ready(){
+   try {await this.database.db.$queryRaw`SELECT 1 AS ready`;}
+   catch {throw new ServiceUnavailableException('Hospital database not ready');}
+   return {status:'ready',hospital:process.env.HOSPITAL_CODE,clinicalUse:false};
+ }
  @Get('internal/v1/records/:externalId')
  async getRecord(@Req() req:Request,@Param('externalId') externalId:string,@Query('version') versionText:string){
    const bearer=req.headers.authorization;

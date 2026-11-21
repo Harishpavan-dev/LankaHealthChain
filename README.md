@@ -1,3 +1,7 @@
+> **v0.9.0 GOVERNANCE & SIX-ROLE RELEASE (synthetic data only):** Three new minimal light-theme portals (Hospital Admin, Security Auditor, Researcher); six Keycloak realm roles; hospital-scoped doctor verification/activation; network-admin operator and synthetic research grant lifecycle; de-identified audit queries; restricted research aggregates (cells >=10 only); new relational and append-only administrative-audit migration; **39 documented API operations** and Postman collection. Source-level and offline tests validated. **Full Docker, real PostgreSQL, six-role browser E2E and Cardano/Midnight live proofs remain unverified**. See [governance architecture](docs/architecture/institutional-governance.md).
+
+> **v0.7.0 BACKEND HARDENING SOURCE RELEASE (synthetic data only):** Two permission-scoped keyset history endpoints (`/access-requests/mine/page`, `/patients/me/consents/page`), a new Core SQL index migration, stricter scoped internal hospital JWT validation including size bounds, hospital PostgreSQL readiness API, versioned OpenAPI 3.1 for **21 routes**, and fresh regression tests. All local tests are dependency-free; **full pnpm build, Docker/PostgreSQL, live Cardano Preprod and Midnight ZK remain unverified.** Includes a deterministic [Postman Collection](docs/api/lankahealthchain.postman_collection.json) for all **21** operations. **109 dependency-free tests pass**. See [`docs/testing/VERIFICATION_0.7.md`](docs/testing/VERIFICATION_0.7.md).
+
 > **v0.6.0 BACKEND-FIRST SOURCE RELEASE (synthetic data only):** Complete version-controlled OpenAPI 3.1 specification for **19** implemented API routes (Swagger displays the same contract), public error envelope with `X-Request-ID`, doctor-scoped `Idempotency-Key` + Core SQL migration, FHIR retry content checks, bounded HTTP JSON body parsing, additional auth rate limits, private Hospital API documentation, and restrained **light-theme** UI polish. **100 offline tests pass. Full dependency-aware build, live DB migrations, Docker, Cardano Preprod and Midnight testnet remain unverified.** See [v0.6 release notes](docs/testing/RELEASE_NOTES_0.6.md).
 
 > **Historical v0.5.0 SOURCE RELEASE (synthetic data only):** Added 24-hour request approval deadlines, nine Core SQL migrations, FHIR R4 AllergyIntolerance.patient correctness and bounded clinical-write validation, 4-way bounded Hospital API retrieval, patient/doctor cursor pagination, improved Merkle manifest checks, Docker per-service secret isolation and real-stack database-owner isolation QA script. **Real Docker/PostgreSQL, Cardano Preprod and Midnight integration remain UNVERIFIED.** See [v0.5 release notes](docs/testing/RELEASE_NOTES_0.5.md).
@@ -25,7 +29,10 @@ UniHack 2026 hackathon implementation | Apache-2.0 | **synthetic medical data on
 flowchart TB
   P[Patient portal] --> API[Core API /api/v1]
   D[Doctor portal] --> API
-  A[Admin portal] --> API
+  A[Network Admin portal] --> API
+  HA[Hospital Admin portal] --> API
+  SEC[Security Auditor portal] --> API
+  R[Researcher portal] --> API
   API --> CORE[(Core PostgreSQL)]
   API --> AUTH[Keycloak OIDC / JWKS]
   API --> N[Northern Hospital FHIR-style API]
@@ -58,13 +65,16 @@ docker compose --env-file .env \
 
 On a compatible developer machine, this Compose configuration is intended to initialize four PostgreSQL logical databases, run **all committed SQL migrations**,
 seeds 101 wholly synthetic patients / 504 fake record references, and starts the Core API, three hospital services, Keycloak,
-and three React development portals. Each API, hospital and UI runs as a separate service.
+and six React development portals. Each API, hospital and UI runs as a separate service.
 
 | Service | Local address |
 |---|---|
 | Patient portal | http://localhost:5173 |
 | Doctor portal | http://localhost:5174 |
 | Network admin | http://localhost:5175 |
+| Hospital admin | http://localhost:5176 |
+| Security auditor | http://localhost:5177 |
+| Synthetic researcher | http://localhost:5178 |
 | Core API | http://localhost:3000/api/v1/health |
 | Swagger, development only | http://localhost:3000/api/docs (version-controlled OpenAPI 3.1) |
 | Keycloak | http://localhost:8080 |
@@ -73,6 +83,9 @@ and three React development portals. Each API, hospital and UI runs as a separat
 - patient: `patient.arun` / `DemoPatient123!`
 - doctor: `doctor.venus` / `DemoDoctor123!`
 - network admin: `admin.network` / `DemoAdmin123!`
+- hospital admin: `hospital.venus` / `DemoHospital123!`
+- security auditor: `auditor.demo` / `DemoAuditor123!`
+- synthetic researcher: `researcher.demo` / `DemoResearch123!`
 
 After creating a synthetic Observation in Doctor Portal, patient approval allows
 fetching cross-hospital data. Newly registered records have `Cardano: PENDING`;
@@ -168,7 +181,7 @@ pnpm db:migrate
 pnpm db:seed
 ```
 
-Migration sequence (now ten Core migrations plus two Hospital migrations):
+Migration sequence (now eleven Core migrations plus two Hospital migrations):
 
 - Core `202611220001_init/migration.sql`
 - Core `202611220002_constraints/migration.sql`
@@ -180,6 +193,7 @@ Migration sequence (now ten Core migrations plus two Hospital migrations):
 - Core `202611220008_request_expiration/migration.sql`
 - Core `202611220009_stable_pagination_indexes/migration.sql`
 - Core `202611220010_access_request_idempotency/migration.sql`
+- Core `202611220011_history_pagination_indexes/migration.sql`
 - Hospital `202611220001_init/migration.sql` and `202611220002_durable_replay/migration.sql` **three independent executions each**.
 
 `pnpm db:seed` inserts the Arun demo (4 FHIR-style resources in 3 hospitals), plus
@@ -383,3 +397,21 @@ node scripts/qa/syntax-check.cjs
 ```
 
 `POST /api/v1/access-requests` accepts optional doctor-scoped `Idempotency-Key` for safe retries. The new `202611220010_access_request_idempotency` Core migration is required before deploying this release. Run the database migration from a private network and verify in PostgreSQL; the SQL has not been executed in this authoring environment. No pnpm lockfile has been generated because package registry access is unavailable; create and commit one from a compatible dependency-enabled machine before reproducible CI/production builds.
+
+## v0.8.0 backend hardening (2026-11-22)
+
+- **22** versioned public API operations, including network-admin-only
+  `GET /api/v1/admin/dependencies`. OpenAPI 3.1 JSON/YAML and Postman
+  collection are generated from the same contract.
+- The Cardano preparation worker commits a complete Merkle batch first and
+  reconstructs missing offline artifacts from database rows on a rerun.
+  Any tampered or partial proof manifest is rejected rather than submitted.
+- New **Core migration 12** and **Hospital migration 3** add demo-only
+  identifier, resource type and FHIR envelope constraints.
+- The authenticated doctor must also belong to an **active hospital**.
+- All on-chain Cardano and Midnight ZK capabilities remain unverified;
+  deployment/testnet integration is pending, not production-complete.
+
+Read `docs/testing/VERIFICATION_0.8.md` for executed tests and blockers.
+
+**Current release:** 0.9.0 (source-only). See `docs/testing/VERIFICATION_0.9.md` for exact tests and deployment blockers.

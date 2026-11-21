@@ -33,3 +33,6 @@ The body is an object `{ "externalId": "...", "localPatientId": "...", "version"
 | POST | `/internal/v1/records` | Persist one scoped synthetic FHIR resource | One-time HMAC token |
 
 These tokens are a development-only service authorization scheme, **not** end-user Keycloak bearer tokens. The current stack is not deployed or independently penetration-tested. The 256 KiB FHIR content validator is a demonstration subset, not full FHIR R4 certification.
+
+### Readiness (v0.7)
+`GET /health` = process liveness; `GET /health/ready` = checks this hospital's own PostgreSQL database; no shared cross-hospital database credentials. These are local-network-only, not a clinical data interface.

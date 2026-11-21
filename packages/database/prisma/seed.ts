@@ -70,6 +70,15 @@ async function main(){
        });
      }
    }
+   // Synthetic role demonstration ONLY: explicit DB grants are separate from Keycloak roles.
+   await db.hospitalOperator.upsert({
+     where:{authSubject_hospitalId:{authSubject:'44444444-4444-4444-8444-444444444444',hospitalId:hospitalIds.venus}},
+     update:{active:true},create:{authSubject:'44444444-4444-4444-8444-444444444444',hospitalId:hospitalIds.venus,active:true},
+   });
+   await db.researchGrant.upsert({where:{authSubject:'66666666-6666-4666-8666-666666666666'},
+     update:{},create:{authSubject:'66666666-6666-4666-8666-666666666666',projectName:'Synthetic interoperability research demo',
+       purpose:'Demonstration of privacy-safe aggregate counts',expiresAt:new Date('2028-01-01T00:00:00.000Z'),active:true},
+   });
    console.log('Seeded 101 synthetic patients and 504 total medical record references (NOT Cardano-anchored)');
  } finally {await db.$disconnect();}
 }

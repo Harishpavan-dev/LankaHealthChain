@@ -36,8 +36,8 @@ async function main() {
   app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
   app.useGlobalFilters(new ApiExceptionFilter());
-  const origins = (process.env.CORS_ORIGINS || 'http://localhost:5173,http://localhost:5174,http://localhost:5175').split(',');
-  app.enableCors({ origin: origins, methods: ['GET','POST','OPTIONS'], allowedHeaders: ['Authorization','Content-Type','Idempotency-Key'], credentials: false });
+  const origins = (process.env.CORS_ORIGINS || 'http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:5177,http://localhost:5178').split(',');
+  app.enableCors({ origin: origins, methods: ['GET','POST','PATCH','OPTIONS'], allowedHeaders: ['Authorization','Content-Type','Idempotency-Key'], credentials: false });
   // Swagger UI displays the same version-controlled contract validated in CI.
   if (process.env.NODE_ENV !== 'production') {
     const contractPath = resolve(__dirname, '../../../docs/api/openapi.json');

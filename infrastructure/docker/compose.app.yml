@@ -37,6 +37,7 @@ services:
       OIDC_JWKS_URL: http://keycloak:8080/realms/lankahealthchain/protocol/openid-connect/certs
       OIDC_ISSUER: http://localhost:8080/realms/lankahealthchain
       CONSENT_MODE: local-demo
+      RESEARCH_MODE: synthetic-demo
       NODE_ENV: development
       OIDC_AUDIENCE: ${OIDC_AUDIENCE:-lhc-api}
       BLOCKFROST_PREPROD_PROJECT_ID: ${BLOCKFROST_PREPROD_PROJECT_ID:-}
@@ -131,3 +132,37 @@ services:
     depends_on:
       migrate-and-seed:
         condition: service_completed_successfully
+
+
+  hospital-admin-portal:
+    <<: *dev-image
+    command: ["pnpm","--filter","@lhc/hospital-admin-portal","exec","vite","--host","0.0.0.0","--port","5176"]
+    environment:
+      VITE_OIDC_URL: http://localhost:8080
+      VITE_OIDC_REALM: lankahealthchain
+      VITE_OIDC_CLIENT_ID: lhc-web
+      VITE_API_URL: http://localhost:3000/api/v1
+    ports: ['127.0.0.1:5176:5176']
+    depends_on: [api]
+
+  security-auditor-portal:
+    <<: *dev-image
+    command: ["pnpm","--filter","@lhc/security-auditor-portal","exec","vite","--host","0.0.0.0","--port","5177"]
+    environment:
+      VITE_OIDC_URL: http://localhost:8080
+      VITE_OIDC_REALM: lankahealthchain
+      VITE_OIDC_CLIENT_ID: lhc-web
+      VITE_API_URL: http://localhost:3000/api/v1
+    ports: ['127.0.0.1:5177:5177']
+    depends_on: [api]
+
+  researcher-portal:
+    <<: *dev-image
+    command: ["pnpm","--filter","@lhc/researcher-portal","exec","vite","--host","0.0.0.0","--port","5178"]
+    environment:
+      VITE_OIDC_URL: http://localhost:8080
+      VITE_OIDC_REALM: lankahealthchain
+      VITE_OIDC_CLIENT_ID: lhc-web
+      VITE_API_URL: http://localhost:3000/api/v1
+    ports: ['127.0.0.1:5178:5178']
+    depends_on: [api]

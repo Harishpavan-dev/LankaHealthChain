@@ -3,9 +3,9 @@
  */
 import 'dotenv/config';
 import { createPrismaClient } from '../../../packages/database/src/client';
-import { makeMerkleBatch, cardanoAnchorMetadata } from '../../../packages/shared/src/merkle';
-import { mkdirSync,writeFileSync } from 'node:fs';
-import { resolve,join } from 'node:path';
+import { makeMerkleBatch } from '../../../packages/shared/src/merkle';
+import { persistAnchorArtifacts } from '../../../packages/shared/src/anchor-artifacts';
+import { resolve } from 'node:path';
 const url=process.env.DATABASE_URL;
 if(!url)throw new Error('DATABASE_URL is required');
 const directory=resolve(process.env.CARDANO_BATCH_DIR || './private/cardano-batches');
@@ -25,11 +25,8 @@ async function prepareBatch():Promise<number>{
        records.push(record);
      }
      const batch=makeMerkleBatch(records.map(r=>r.integrityCommitment));
-     mkdirSync(join(directory,batch.root),{recursive:true,mode:0o700});
-     writeFileSync(join(directory,batch.root,'cardano-metadata.json'),
-       JSON.stringify(cardanoAnchorMetadata(batch.root,batch.proofs.length),null,2)+'\n',{mode:0o600});
-     writeFileSync(join(directory,batch.root,'private-inclusion-proofs.json'),
-       JSON.stringify(batch,null,2)+'\n',{mode:0o600});
+     // Only persist DB changes inside the transaction. File I/O follows the
+     // commit and can be replayed safely after a crash.
      for(const [i,record] of records.entries()){
        const proof=batch.proofs.find(p=>p.commitment===record.integrityCommitment);
        if(!proof)throw new Error('Commitment missing from batch');
@@ -41,10 +38,33 @@ async function prepareBatch():Promise<number>{
      return records.length;
    },{timeout:120000});
 }
+/** Reconcile pending, already-committed batches with local private artifacts.
+ * This is replayable after any process crash between DB commit and file output.
+ */
+async function recoverPendingFiles():Promise<number>{
+ const roots=await database.recordAnchor.findMany({
+   where:{batchId:{not:null},status:'PENDING'},select:{batchId:true},
+   distinct:['batchId'],take:1000,
+ });
+ for(const entry of roots){
+   if(!entry.batchId)continue;
+   const anchors=await database.recordAnchor.findMany({
+     where:{batchId:entry.batchId},
+     include:{record:{select:{integrityCommitment:true}}},
+   });
+   const output=persistAnchorArtifacts(directory,entry.batchId,
+     anchors.map(a=>({integrityCommitment:a.record.integrityCommitment,inclusionProof:a.inclusionProof})));
+   console.log(`Reconciled ${output.records} private proofs for batch ${output.root}`);
+ }
+ if(roots.length===1000)console.warn('Pending batch scan reached 1000 roots; rerun worker for more.');
+ return roots.length;
+}
 async function main(){
   let total=0;
   let batches=0;
   try {
+    // Restore files for committed batches that may have been interrupted.
+    await recoverPendingFiles();
     // Drain all current events in bounded 100-record batches.
     // A subsequent invocation safely picks up newly added events.
     while (batches<1000){
@@ -52,6 +72,7 @@ async function main(){
       if(processed===0)break;
       total+=processed;
       batches++;
+      await recoverPendingFiles();
     }
     console.log(`Prepared ${total} records in ${batches} batch(es); ON-CHAIN submission still requires a signing operator.`);
   }finally{await database.$disconnect();}

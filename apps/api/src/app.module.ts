@@ -12,9 +12,15 @@ import { CreateRecordService } from './modules/create-record.service';
 import { AdminController } from './modules/admin.controller';
 import { VerificationController } from './modules/verification.controller';
 
+import {HospitalAdminController} from './modules/hospital-admin.controller';
+import {HospitalAdminService} from './modules/hospital-admin.service';
+import {SecurityAuditController} from './modules/security-audit.controller';
+import {SecurityAuditService} from './modules/security-audit.service';
+import {ResearchController} from './modules/research.controller';
+import {ResearchService} from './modules/research.service';
 @Module({
  imports: [ThrottlerModule.forRoot([{ ttl: 60000, limit: 60 }]), DbModule],
- controllers: [HealthController, DirectoryController, AccessController, RecordsController, CreateRecordController,AdminController,VerificationController],
- providers: [AccessService, RecordsService, CreateRecordService],
+ controllers: [HealthController, DirectoryController, AccessController, RecordsController, CreateRecordController,AdminController,VerificationController,HospitalAdminController,SecurityAuditController,ResearchController],
+ providers: [AccessService, RecordsService, CreateRecordService,HospitalAdminService,SecurityAuditService,ResearchService],
 })
 export class AppModule {}

@@ -1,6 +1,6 @@
 {
   "name": "@lhc/shared",
-  "version": "0.6.0",
+  "version": "0.9.0",
   "private": true,
   "type": "module",
   "exports": {
@@ -19,7 +19,12 @@
     "./bounded-concurrency": "./dist/bounded-concurrency.js",
     "./record-consistency": "./dist/record-consistency.js",
     "./api-error": "./dist/api-error.js",
-    "./idempotency": "./dist/idempotency.js"
+    "./idempotency": "./dist/idempotency.js",
+    "./anchor-recovery": "./dist/anchor-recovery.js",
+    "./anchor-artifacts": "./dist/anchor-artifacts.js",
+    "./hospital-readiness": "./dist/hospital-readiness.js",
+    "./doctor-policy": "./dist/doctor-policy.js",
+    "./governance": "./dist/governance.js"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
@@ -74,6 +79,21 @@
       ],
       "idempotency": [
         "dist/idempotency.d.ts"
+      ],
+      "anchor-recovery": [
+        "dist/anchor-recovery.d.ts"
+      ],
+      "anchor-artifacts": [
+        "dist/anchor-artifacts.d.ts"
+      ],
+      "hospital-readiness": [
+        "dist/hospital-readiness.d.ts"
+      ],
+      "doctor-policy": [
+        "dist/doctor-policy.d.ts"
+      ],
+      "governance": [
+        "dist/governance.d.ts"
       ]
     }
   }

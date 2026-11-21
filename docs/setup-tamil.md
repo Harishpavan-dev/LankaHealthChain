@@ -268,3 +268,25 @@ Patient Approval Request-க்கு **24 மணி நேர deadline** உள
 **Cardano Preprod**: wallet, Preprod test-ADA, node/signing access மற்றும் confirmed TX-ஐப் பதிவு செய்வது இன்னும் அவசியம்.
 
 **Midnight**: Compact compiler நிறுவி source contract compile, local proof server, wallet/client, deploy, verification ஆகியவை இன்னும் செய்யப்பட வேண்டும். Local-demo authorization ஒரு ZK proof அல்ல.
+
+## v0.9.0 – கூடுதல் மூன்று User Portals
+
+புதிய hospital governance, audit மற்றும் synthetic research UI applications:
+
+| Role | URL | Synthetic Keycloak account | DB authorization |
+|---|---|---|---|
+| Hospital Administrator | http://localhost:5176 | `hospital.venus` | Venus மட்டும் active `HospitalOperator` mapping |
+| Security Auditor | http://localhost:5177 | `auditor.demo` | Keycloak `security_auditor` role; clinical records கிடையாது |
+| Researcher | http://localhost:5178 | `researcher.demo` | Active `ResearchGrant` + `RESEARCH_MODE=synthetic-demo` |
+
+இவை LOCAL / synthetic demonstration credentials மட்டும். Real hospital அல்லது patient data சேர்க்கக்கூடாது.
+
+கூடுதல் testing commands:
+
+```bash
+pnpm test
+pnpm docs:check
+LHC_ACCEPT_SYNTHETIC_WRITE=YES node scripts/qa/live-governance.mjs
+```
+
+கடைசி command உண்மையான local Docker/PostgreSQL/Keycloak services இயங்கும்போது மட்டுமே வேலை செய்யும். Source authoring environment-ல் இது இன்னும் execute செய்யப்படவில்லை. `docs/architecture/institutional-governance.md` பார்க்கவும்.

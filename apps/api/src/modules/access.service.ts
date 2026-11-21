@@ -6,6 +6,7 @@ import { Principal } from '../security/jwt.guard';
 import { requireRole } from '../security/roles';
 import { CreateAccessRequestDto } from './access.dto';
 import { normalizeIdempotencyKey, accessRequestFingerprint } from '@lhc/shared/idempotency';
+import { isDoctorOperational } from '@lhc/shared/doctor-policy';
 
 @Injectable()
 export class AccessService {
@@ -18,7 +19,9 @@ export class AccessService {
  async registeredDoctor(principal: Principal) {
    requireRole(principal, 'doctor');
    const doc = await this.data.db.doctor.findUnique({ where: { authSubject: principal.sub } });
-   if (!doc?.active || !doc.verified) throw new ForbiddenException('Doctor verification required');
+   if (!doc || !doc.active || !doc.verified) throw new ForbiddenException('Doctor verification required');
+   const hospital = await this.data.db.hospital.findUnique({where:{id:doc.hospitalId},select:{id:true,active:true}});
+   if(!isDoctorOperational(doc,hospital)) throw new ForbiddenException('Requesting hospital is inactive');
    return doc;
  }
  async create(principal: Principal, body: CreateAccessRequestDto, rawKey?:string) {
@@ -66,6 +69,22 @@ export class AccessService {
  async mine(principal: Principal) {
    const doctor = await this.registeredDoctor(principal);
    return this.data.db.accessRequest.findMany({ where: { doctorId: doctor.id }, orderBy: { createdAt:'desc' }, take:100 });
+ }
+ /** Returns a stable, doctor-scoped keyset page; rejects foreign cursors. */
+ async minePage(principal: Principal,rawLimit?:string,rawCursor?:string) {
+   const doctor=await this.registeredDoctor(principal);
+   let limit:number,cursor:string|undefined;
+   try {limit=parsePageLimit(rawLimit);cursor=parsePageCursor(rawCursor);}
+   catch {throw new BadRequestException('Invalid page limit or cursor');}
+   if(cursor){
+     const own=await this.data.db.accessRequest.findFirst({where:{id:cursor,doctorId:doctor.id},select:{id:true}});
+     if(!own)throw new BadRequestException('Invalid cursor for doctor request history');
+   }
+   const items=await this.data.db.accessRequest.findMany({
+     where:{doctorId:doctor.id},orderBy:[{createdAt:'desc'},{id:'desc'}],take:limit+1,
+     ...(cursor?{cursor:{id:cursor},skip:1}:{}),
+   });
+   return pageResult(items,limit);
  }
  async pending(principal: Principal) {
    requireRole(principal, 'patient');
@@ -132,6 +151,23 @@ export class AccessService {
    requireRole(principal,'patient');
    const patient = await this.patient(principal.sub);
    return this.data.db.consent.findMany({ where:{patientId:patient.id}, orderBy:{createdAt:'desc'},take:100 });
+ }
+ /** Bound consents to authenticated patient before resolving the cursor. */
+ async myConsentsPage(principal: Principal,rawLimit?:string,rawCursor?:string) {
+   requireRole(principal,'patient');
+   const patient=await this.patient(principal.sub);
+   let limit:number,cursor:string|undefined;
+   try {limit=parsePageLimit(rawLimit);cursor=parsePageCursor(rawCursor);}
+   catch {throw new BadRequestException('Invalid page limit or cursor');}
+   if(cursor){
+     const own=await this.data.db.consent.findFirst({where:{id:cursor,patientId:patient.id},select:{id:true}});
+     if(!own)throw new BadRequestException('Invalid cursor for patient consent history');
+   }
+   const items=await this.data.db.consent.findMany({
+     where:{patientId:patient.id},orderBy:[{createdAt:'desc'},{id:'desc'}],take:limit+1,
+     ...(cursor?{cursor:{id:cursor},skip:1}:{}),
+   });
+   return pageResult(items,limit);
  }
  async myAudit(principal: Principal) {
    requireRole(principal,'patient');

@@ -21,6 +21,29 @@ jobs:
           docker compose --env-file .env \
             -f infrastructure/docker/compose.yml \
             -f infrastructure/docker/compose.app.yml up --build -d
+      - name: Verify separate hospital PostgreSQL readiness endpoints
+        run: |
+          set -eu
+          for entry in hospital-northern:4101 hospital-jaffna:4102 hospital-venus:4103; do
+            service="${entry%%:*}"
+            port="${entry##*:}"
+            ready=0
+            for attempt in $(seq 1 30); do
+              if docker compose --env-file .env \
+                -f infrastructure/docker/compose.yml \
+                -f infrastructure/docker/compose.app.yml \
+                exec -T "$service" node -e \
+                "fetch('http://127.0.0.1:$port/health/ready').then(async r => { if (!r.ok || (await r.json()).status !== 'ready') process.exit(1); }).catch(() => process.exit(1))"; then
+                ready=1
+                break
+              fi
+              sleep 2
+            done
+            if [ "$ready" -ne 1 ]; then
+              echo "Hospital readiness failed: $service" >&2
+              exit 1
+            fi
+          done
       - name: Verify independent database owners have no cross-database access
         run: |
           docker compose --env-file .env \
@@ -36,6 +59,10 @@ jobs:
         env:
           LHC_ACCEPT_SYNTHETIC_WRITE: 'YES'
         run: node scripts/qa/live-flow.mjs
+      - name: Verify all new governance roles, DB tenant isolation, grant revocation and audit privacy
+        env:
+          LHC_ACCEPT_SYNTHETIC_WRITE: 'YES'
+        run: node scripts/qa/live-governance.mjs
       - name: Show container status without secrets on failure
         if: failure()
         run: |

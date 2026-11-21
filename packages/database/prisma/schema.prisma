@@ -18,6 +18,8 @@ model Hospital {
   doctors    Doctor[]
   identities PatientIdentityMap[]
   records    MedicalRecordIndex[]
+  operators  HospitalOperator[]
+  administrativeEvents AdministrativeAuditEvent[]
 }
 
 model Patient {
@@ -94,6 +96,7 @@ model AccessRequest {
   @@index([patientId, status])
   @@index([patientId, status, decisionDeadlineAt])
   @@index([doctorId, createdAt])
+  @@index([doctorId, createdAt(sort: Desc), id(sort: Desc)])
   @@unique([doctorId, clientRequestKey])
 }
 
@@ -114,6 +117,7 @@ model Consent {
   patient           Patient       @relation(fields: [patientId], references: [id], onDelete: Restrict)
   @@index([doctorId, status, expiresAt])
   @@index([patientId, createdAt(sort: Desc)])
+  @@index([patientId, createdAt(sort: Desc), id(sort: Desc)])
 }
 
 model RecordAnchor {
@@ -126,6 +130,7 @@ model RecordAnchor {
   createdAt      DateTime           @default(now()) @db.Timestamptz(3)
   record         MedicalRecordIndex @relation(fields: [recordIndexId], references: [id], onDelete: Restrict)
   @@index([recordIndexId])
+  @@index([batchId, status])
   @@unique([recordIndexId, batchId])
 }
 
@@ -154,4 +159,43 @@ model OutboxEvent {
   createdAt    DateTime  @default(now()) @db.Timestamptz(3)
   @@index([publishedAt, createdAt])
   @@unique([eventType, aggregateId])
+}
+
+// Operators are enrolled by network administration, never through a user-controlled JWT claim.
+model HospitalOperator {
+  id           String    @id @default(uuid()) @db.Uuid
+  authSubject  String
+  hospitalId   String    @db.Uuid
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now()) @db.Timestamptz(3)
+  hospital     Hospital  @relation(fields: [hospitalId], references: [id], onDelete: Restrict)
+  @@unique([authSubject, hospitalId])
+  @@index([hospitalId, active])
+}
+
+// Synthetic-data-only research grant. Not a substitute for research ethics review.
+model ResearchGrant {
+  id           String    @id @default(uuid()) @db.Uuid
+  authSubject  String    @unique
+  projectName  String
+  purpose      String
+  active       Boolean   @default(true)
+  approvedAt   DateTime  @default(now()) @db.Timestamptz(3)
+  expiresAt    DateTime  @db.Timestamptz(3)
+  @@index([active, expiresAt])
+}
+
+// Separate append-only operations audit; deliberately excludes clinical payloads.
+model AdministrativeAuditEvent {
+  id          String    @id @default(uuid()) @db.Uuid
+  hospitalId  String?   @db.Uuid
+  actorSub    String
+  action      String
+  targetKind  String
+  targetId    String
+  outcome     String
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+  hospital    Hospital? @relation(fields: [hospitalId], references: [id], onDelete: Restrict)
+  @@index([hospitalId, createdAt(sort: Desc), id(sort: Desc)])
+  @@index([createdAt(sort: Desc), id(sort: Desc)])
 }
