@@ -72,7 +72,6 @@ model MedicalRecordIndex {
   @@unique([hospitalId, remoteRecordId, recordVersion])
   @@index([patientId, resourceType])
   @@index([patientId, createdAt(sort: Desc)])
-  @@index([patientId, createdAt(sort: Desc), id(sort: Desc)])
   @@index([anchorStatus, createdAt])
 }
 
@@ -83,18 +82,13 @@ model AccessRequest {
   purpose                  String
   requestedTypes           String[]
   requestedDurationMinutes Int
-  clientRequestKey         String?      @db.VarChar(128)
-  clientRequestFingerprint String?      @db.VarChar(64)
-  decisionDeadlineAt       DateTime     @default(dbgenerated("(CURRENT_TIMESTAMP + interval '24 hours')")) @db.Timestamptz(3)
   status                   String       @default("PENDING")
   createdAt                DateTime     @default(now()) @db.Timestamptz(3)
   patient                  Patient      @relation(fields: [patientId], references: [id], onDelete: Restrict)
   doctor                   Doctor       @relation(fields: [doctorId], references: [id], onDelete: Restrict)
   consent                  Consent?
   @@index([patientId, status])
-  @@index([patientId, status, decisionDeadlineAt])
   @@index([doctorId, createdAt])
-  @@unique([doctorId, clientRequestKey])
 }
 
 model Consent {
@@ -141,7 +135,6 @@ model AuditEvent {
   createdAt     DateTime @default(now()) @db.Timestamptz(3)
   patient       Patient  @relation(fields: [patientId], references: [id], onDelete: Restrict)
   @@index([patientId, createdAt(sort: Desc)])
-  @@index([patientId, createdAt(sort: Desc), id(sort: Desc)])
 }
 
 model OutboxEvent {

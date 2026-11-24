@@ -1,6 +1,6 @@
 {
   "name": "@lhc/shared",
-  "version": "0.6.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "exports": {
@@ -14,12 +14,7 @@
     "./consume-token": "./dist/consume-token.js",
     "./hospital-endpoints": "./dist/hospital-endpoints.js",
     "./bounded-json": "./dist/bounded-json.js",
-    "./pagination": "./dist/pagination.js",
-    "./approval-policy": "./dist/approval-policy.js",
-    "./bounded-concurrency": "./dist/bounded-concurrency.js",
-    "./record-consistency": "./dist/record-consistency.js",
-    "./api-error": "./dist/api-error.js",
-    "./idempotency": "./dist/idempotency.js"
+    "./pagination": "./dist/pagination.js"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
@@ -59,21 +54,6 @@
       ],
       "pagination": [
         "dist/pagination.d.ts"
-      ],
-      "approval-policy": [
-        "dist/approval-policy.d.ts"
-      ],
-      "bounded-concurrency": [
-        "dist/bounded-concurrency.d.ts"
-      ],
-      "record-consistency": [
-        "dist/record-consistency.d.ts"
-      ],
-      "api-error": [
-        "dist/api-error.d.ts"
-      ],
-      "idempotency": [
-        "dist/idempotency.d.ts"
       ]
     }
   }

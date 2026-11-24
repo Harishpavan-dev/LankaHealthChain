@@ -1,0 +1,43 @@
+name: Synthetic Docker integration
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  full-stack-demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.22.3'
+      - name: Generate disposable local-only secrets
+        run: node scripts/setup-local.mjs
+      - name: Build and start independent databases, API, Keycloak and portals
+        run: |
+          docker compose --env-file .env \
+            -f infrastructure/docker/compose.yml \
+            -f infrastructure/docker/compose.app.yml up --build -d
+      - name: Verify API readiness and Keycloak discovery
+        env:
+          LHC_HEALTH_ATTEMPTS: '60'
+        run: node scripts/qa/live-smoke.mjs
+      - name: Execute actual synthetic consent + hospital HTTP journey
+        env:
+          LHC_ACCEPT_SYNTHETIC_WRITE: 'YES'
+        run: node scripts/qa/live-flow.mjs
+      - name: Show container status without secrets on failure
+        if: failure()
+        run: |
+          docker compose --env-file .env \
+            -f infrastructure/docker/compose.yml \
+            -f infrastructure/docker/compose.app.yml ps
+      - name: Stop and discard synthetic data
+        if: always()
+        run: |
+          docker compose --env-file .env \
+            -f infrastructure/docker/compose.yml \
+            -f infrastructure/docker/compose.app.yml down -v --remove-orphans
