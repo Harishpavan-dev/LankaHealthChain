@@ -1,6 +1,6 @@
 {
   "name": "@lhc/database",
-  "version": "0.6.0",
+  "version": "0.4.0",
   "private": true,
   "type": "commonjs",
   "scripts": {
@@ -9,8 +9,7 @@
     "db:dev": "prisma migrate dev --config prisma.config.ts",
     "db:seed": "tsx prisma/seed.ts",
     "build": "prisma generate --config prisma.config.ts && tsc -p tsconfig.json",
-    "typecheck": "tsc --noEmit -p tsconfig.json",
-    "db:verify-isolation": "tsx scripts/verify-isolation.ts"
+    "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "@prisma/client": "^7.0.0",

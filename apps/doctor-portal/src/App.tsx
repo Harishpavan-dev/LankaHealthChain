@@ -1,10 +1,10 @@
 import { useEffect,useState } from 'react';
 import { api,authenticate } from '@lhc/web/auth';
 import { Shell,Gate,Metric } from '@lhc/web/components';
-type Request={id:string;status:string;purpose:string;requestedTypes:string[];createdAt:string;decisionDeadlineAt:string};
+type Request={id:string;status:string;purpose:string;requestedTypes:string[];createdAt:string};
 const DEMO_PATIENT_ID='b1111111-1111-4111-8111-111111111111';
 export function App(){
- const [ready,setReady]=useState(false),[requests,setRequests]=useState<Request[]>([]),[patientId,setPatientId]=useState(DEMO_PATIENT_ID),[types,setTypes]=useState(['Observation','DiagnosticReport']),[purpose,setPurpose]=useState('treatment'),[duration,setDuration]=useState(60),[records,setRecords]=useState<unknown[]>([]),[nextCursor,setNextCursor]=useState<string|null>(null),[activeRequest,setActiveRequest]=useState<string|null>(null),[systolic,setSystolic]=useState(120),[created,setCreated]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false);
+ const [ready,setReady]=useState(false),[requests,setRequests]=useState<Request[]>([]),[patientId,setPatientId]=useState(DEMO_PATIENT_ID),[types,setTypes]=useState(['Observation','DiagnosticReport']),[purpose,setPurpose]=useState('treatment'),[duration,setDuration]=useState(60),[records,setRecords]=useState<unknown[]>([]),[systolic,setSystolic]=useState(120),[created,setCreated]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false);
  useEffect(()=>{authenticate().then(setReady).catch(e=>setError(String(e)));},[]);
  async function refresh(){try{setRequests(await api<Request[]>('/access-requests/mine'));setError('');}catch(e){setError(String(e));}}
  useEffect(()=>{if(ready)void refresh();},[ready]);
@@ -18,14 +18,9 @@ export function App(){
   const result=await api<{id:string;anchorStatus:string}>('/records',{method:'POST',body:JSON.stringify({patientId,resource:record})});
   setCreated(`Record ${result.id} created in your hospital. Cardano anchor: ${result.anchorStatus}.`);
  }catch(e){setError(String(e));}finally{setBusy(false);}}
- async function getRecords(id:string,cursor?:string){setBusy(true);if(!cursor){setRecords([]);setNextCursor(null);}try{
-   const path=`/access-requests/${id}/records/page?limit=25${cursor?`&cursor=${encodeURIComponent(cursor)}`:''}`;
-   const page=await api<{items:unknown[];nextCursor:string|null}>(path);
-   setRecords(prev=>cursor?[...prev,...page.items]:page.items);
-   setNextCursor(page.nextCursor);setActiveRequest(id);setError('');
- }catch(e){setError(String(e));}finally{setBusy(false);}}
+ async function getRecords(id:string){setBusy(true);setRecords([]);try{setRecords(await api<unknown[]>(`/access-requests/${id}/records`));setError('');}catch(e){setError(String(e));}finally{setBusy(false);}}
  return <Gate ready={ready} role="Doctor"><Shell title="Clinical workspace" kicker="Doctor overview" subtitle="Request patient-approved, cross-hospital synthetic records" role="Doctor">
- {error&&<div className="notice error" role="alert">{error}</div>}
+ {error&&<div className="notice error">{error}</div>}
  <div className="grid"><Metric icon="▤" label="Access requests" value={requests.length}/><Metric icon="✓" label="Approved" value={requests.filter(r=>r.status==='APPROVED').length}/><Metric icon="♧" label="Hospital network" value="3"/></div>
  <div className="section-head"><h2>New record access request</h2></div><div className="card">
  <div className="field"><label>Patient ID (synthetic demo)</label><input className="input" value={patientId} onChange={e=>setPatientId(e.target.value)}/></div>
@@ -38,8 +33,7 @@ export function App(){
  <div className="field"><label>Synthetic systolic blood pressure (mmHg)</label><input className="input" type="number" min="1" max="300" value={systolic} onChange={e=>setSystolic(Number(e.target.value))}/></div>
  <button className="btn" disabled={busy} onClick={createObservation}>Save synthetic Observation</button>
  {created&&<p className="notice">{created}</p>}</div>
- <div className="section-head"><h2>Previous requests</h2><button className="btn secondary" onClick={refresh}>Refresh</button></div><div className="card">{requests.length===0?<div className="empty">No requests submitted yet.</div>:requests.map(r=><div className="record" key={r.id}><div><div className="record-title">{r.purpose} · {r.requestedTypes.join(', ')}</div><div className="record-meta">{r.status==='PENDING' && new Date(r.decisionDeadlineAt).getTime()<=Date.now()?'EXPIRED':r.status} · Requested {new Date(r.createdAt).toLocaleString()} · Approval deadline {new Date(r.decisionDeadlineAt).toLocaleString()}</div></div>{r.status==='APPROVED'&&<button className="btn" disabled={busy} onClick={()=>getRecords(r.id)}>View records</button>}</div>)}</div>
- {records.length>0&&<><div className="section-head"><h2>Fetched synthetic FHIR records</h2></div><pre className="json">{JSON.stringify(records,null,2)}</pre>
- {nextCursor&&activeRequest&&<button className="btn secondary" disabled={busy} onClick={()=>getRecords(activeRequest,nextCursor)}>Load more records</button>}</>}
+ <div className="section-head"><h2>Previous requests</h2><button className="btn secondary" onClick={refresh}>Refresh</button></div><div className="card">{requests.length===0?<div className="empty">No requests submitted yet.</div>:requests.map(r=><div className="record" key={r.id}><div><div className="record-title">{r.purpose} · {r.requestedTypes.join(', ')}</div><div className="record-meta">{r.status} · {new Date(r.createdAt).toLocaleString()}</div></div>{r.status==='APPROVED'&&<button className="btn" disabled={busy} onClick={()=>getRecords(r.id)}>View records</button>}</div>)}</div>
+ {records.length>0&&<><div className="section-head"><h2>Verified synthetic FHIR data</h2></div><pre className="json">{JSON.stringify(records,null,2)}</pre></>}
  </Shell></Gate>;
 }

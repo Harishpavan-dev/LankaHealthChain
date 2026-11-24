@@ -5,10 +5,9 @@ import { CoreDbService } from '../database/db.service';
 import { AccessService } from './access.service';
 import { Principal } from '../security/jwt.guard';
 import { CreateMedicalRecordDto } from './create-record.dto';
-import { bindFhirPatient,validateDemoClinicalWrite } from '@lhc/shared/fhir';
+import { isSupportedFhirResource } from '@lhc/shared/fhir';
 import { createCommitment } from '@lhc/shared/crypto';
 import { issueRecordToken } from '@lhc/shared/internal-token';
-import { matchesExistingRecord } from '@lhc/shared/record-consistency';
 
 /** Write is made to the owning hospital only. Core holds an integrity commitment
  * and locator, never the clinical payload. Retries are idempotent by record id.
@@ -24,8 +23,8 @@ export class CreateRecordService {
    if(!map) throw new NotFoundException('Patient is not enrolled at the treating hospital');
    const id=typeof dto.resource.id==='string' ? dto.resource.id : randomUUID();
    if (!/^[a-zA-Z0-9._-]{1,64}$/.test(id)) throw new BadRequestException('Invalid FHIR resource id');
-   const resource=bindFhirPatient({...dto.resource,id},map.localPatientRef);
-   if (!validateDemoClinicalWrite(resource)) throw new BadRequestException('Invalid or oversized synthetic FHIR R4 clinical resource');
+   const resource={...dto.resource,id,subject:{reference:`Patient/${map.localPatientRef}`}};
+   if (!isSupportedFhirResource(resource)) throw new BadRequestException('Only supported FHIR R4 clinical resource envelopes are accepted');
    const secret=process.env[`HOSPITAL_${hospital.code.toUpperCase()}_TOKEN_SECRET`] || '';
    const token=issueRecordToken({action:'write',hospitalCode:hospital.code,
      externalRecordId:id,localPatientId:map.localPatientRef,resourceType:resource.resourceType as string,version:1},secret);
@@ -47,8 +46,8 @@ export class CreateRecordService {
          integrityCommitment:proof.commitment,nonceHex:proof.nonceHex,anchorStatus:'PENDING'},
        update:{},
      });
-     if(!matchesExistingRecord(entry,dto.patientId,resource.resourceType as string,resource))
-       throw new ConflictException('Existing record content or patient does not match source');
+     if(entry.patientId!==dto.patientId||entry.resourceType!==resource.resourceType)
+       throw new ConflictException('Record locator collision');
      await tx.outboxEvent.upsert({where:{eventType_aggregateId:{eventType:'RECORD_REGISTERED',aggregateId:entry.id}},
        create:{eventType:'RECORD_REGISTERED',aggregateId:entry.id,payload:{recordIndexId:entry.id}},update:{}});
      await tx.auditEvent.create({data:{patientId:dto.patientId,actorSub:principal.sub,

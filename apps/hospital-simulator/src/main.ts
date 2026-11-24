@@ -1,11 +1,10 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
-import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Module, Controller, Get, Post, Body, Param, Query, Req, UnauthorizedException, ForbiddenException, NotFoundException, ConflictException, BadRequestException, Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import type { Request, Response, NextFunction } from 'express';
+import type { Request } from 'express';
 import { createPrismaClient } from '@lhc/hospital-database';
 import { verifyRecordToken } from '@lhc/shared/internal-token';
-import { isSupportedFhirResource,fhirPatientReference,validateDemoClinicalWrite } from '@lhc/shared/fhir';
+import { isSupportedFhirResource } from '@lhc/shared/fhir';
 import { consumeServiceToken } from '@lhc/shared/consume-token';
 import { canonicalJson } from '@lhc/shared/crypto';
 
@@ -47,7 +46,7 @@ class HospitalController {
    const record=await this.database.db.medicalRecord.findUnique({where:{externalId_version:{externalId,version}}});
    if (!record || record.localPatientId!==claims.localPatientId || record.resourceType!==claims.resourceType ||
        !isSupportedFhirResource(record.fhir) || record.fhir.id!==externalId ||
-       fhirPatientReference(record.fhir)!==`Patient/${claims.localPatientId}`)
+       (record.fhir.subject as {reference:string}).reference!==`Patient/${claims.localPatientId}`)
      throw new NotFoundException('Record outside granted scope');
    if (!await consumeServiceToken(this.database.db, claims)) throw new ForbiddenException('Replayed internal token');
    return record.fhir;
@@ -62,11 +61,11 @@ class HospitalController {
    if (claims.action!=='write' || claims.hospitalCode!==process.env.HOSPITAL_CODE) throw new ForbiddenException('Write scope required');
    if (!body || typeof body!=='object' || Array.isArray(body)) throw new BadRequestException('Invalid resource');
    const input=body as Record<string,unknown>;
-   if (!validateDemoClinicalWrite(input.fhir) ||
+   if (!isSupportedFhirResource(input.fhir) ||
        input.externalId!==claims.externalRecordId || input.localPatientId!==claims.localPatientId ||
        input.resourceType!==claims.resourceType || input.version!==claims.version ||
        input.fhir.id!==claims.externalRecordId || input.fhir.resourceType!==claims.resourceType ||
-       fhirPatientReference(input.fhir)!==`Patient/${claims.localPatientId}`)
+       (input.fhir.subject as {reference:string}).reference!==`Patient/${claims.localPatientId}`)
      throw new ForbiddenException('FHIR record outside signed write scope');
    if (!await consumeServiceToken(this.database.db, claims)) throw new ForbiddenException('Replayed internal token');
    const where={externalId_version:{externalId:claims.externalRecordId,version:claims.version}};
@@ -95,14 +94,8 @@ async function bootstrap(){
  if (!Object.prototype.hasOwnProperty.call(allowedCodes,code)) throw new Error('Invalid HOSPITAL_CODE');
  if (!process.env.HOSPITAL_DATABASE_URL) throw new Error('HOSPITAL_DATABASE_URL is required');
  if ((process.env.HOSPITAL_TOKEN_SECRET||'').length<32) throw new Error('HOSPITAL_TOKEN_SECRET must have at least 32 characters');
- const app=await NestFactory.create<NestExpressApplication>(HospitalModule);
- app.useBodyParser('json',{limit:'300kb'});
+ const app=await NestFactory.create(HospitalModule);
  app.enableShutdownHooks();
- app.use((_req:Request,res:Response,next:NextFunction)=>{
-   res.setHeader('Cache-Control','no-store');
-   res.setHeader('X-Content-Type-Options','nosniff');
-   next();
- });
  await app.listen(allowedCodes[code],process.env.HOST || '127.0.0.1');
 }
 bootstrap().catch(e=>{console.error(e.message);process.exitCode=1;});

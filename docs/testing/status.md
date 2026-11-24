@@ -1,6 +1,4 @@
-> v0.5 source verification is summarized in [RELEASE_NOTES_0.5.md](RELEASE_NOTES_0.5.md). The older counts below are historical.
-
-> Latest source-release update: see **`RELEASE_NOTES_0.5.md`**. Historical check counts below refer to v0.2. New files and tests have been added but PostgreSQL, Docker and blockchain live integration are still unverified.
+> Latest source-release update: see **`RELEASE_NOTES_0.4.md`**. Historical check counts below refer to v0.2. New files and tests have been added but PostgreSQL, Docker and blockchain live integration are still unverified.
 
 # Test status and acceptance criteria
 

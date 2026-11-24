@@ -1,6 +1,4 @@
 import { readJsonResponseBounded } from '@lhc/shared/bounded-json';
-import { mapBounded } from '@lhc/shared/bounded-concurrency';
-import { BadRequestException } from '@nestjs/common';
 import { permittedHospitalUrl } from '@lhc/shared/hospital-endpoints';
 import { ConflictException, ForbiddenException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { CoreDbService } from '../database/db.service';
@@ -9,12 +7,12 @@ import { Principal } from '../security/jwt.guard';
 import { isConsentValid } from '@lhc/shared/authorization';
 import { verifyCommitment } from '@lhc/shared/crypto';
 import { issueRecordToken } from '@lhc/shared/internal-token';
-import { isSupportedFhirResource,fhirPatientReference } from '@lhc/shared/fhir';
+import { isSupportedFhirResource } from '@lhc/shared/fhir';
 
 @Injectable()
 export class RecordsService {
  constructor(private readonly data: CoreDbService, private readonly access: AccessService) {}
- async forAccessRequest(principal:Principal, requestId:string, page?:{limit:number;cursor?:string}) {
+ async forAccessRequest(principal:Principal, requestId:string) {
    const doctor = await this.access.registeredDoctor(principal);
    const request = await this.data.db.accessRequest.findUnique({where:{id:requestId},include:{consent:true}});
    if (!request || request.doctorId !== doctor.id) throw new NotFoundException('Request not found');
@@ -29,23 +27,12 @@ export class RecordsService {
        activeConsent.patientId !== request.patientId || activeConsent.doctorId !== doctor.id ||
        activeConsent.hospitalId !== doctor.hospitalId || activeConsent.purpose !== request.purpose ||
        activeConsent.expiresAt <= now) throw new ForbiddenException('Consent revoked, expired, or out of scope');
-   if(page?.cursor){
-     const cursorRecord=await this.data.db.medicalRecordIndex.findFirst({
-       where:{id:page.cursor,patientId:request.patientId,resourceType:{in:request.requestedTypes}},select:{id:true},
-     });
-     if(!cursorRecord)throw new BadRequestException('Invalid patient-scoped medical record cursor');
-   }
-   const fetched = await this.data.db.medicalRecordIndex.findMany({
-     where:{patientId:request.patientId,resourceType:{in:request.requestedTypes}},
-     include:{hospital:true},orderBy:[{createdAt:'desc'},{id:'desc'}],
-     take:page?page.limit+1:101,
-     ...(page?.cursor?{cursor:{id:page.cursor},skip:1}:{}),
+   const records = await this.data.db.medicalRecordIndex.findMany({
+     where:{patientId:request.patientId,resourceType:{in:request.requestedTypes}},include:{hospital:true}, take:100,
    });
-   if(!page && fetched.length>100)
-     throw new BadRequestException('Too many records for unpaged retrieval; use /records/page');
-   const records=page?fetched.slice(0,page.limit):fetched;
    const identities = await this.data.db.patientIdentityMap.findMany({where:{patientId:request.patientId}});
-   const result = await mapBounded(records,4,async record => {
+   const result = [];
+   for (const record of records) {
      // Re-read consent before each release: revocation blocks NEW reads (not prior downloads).
      const fresh = await this.data.db.consent.findUnique({where:{id:request.consent.id}});
      if (!isConsentValid(fresh, {
@@ -74,7 +61,7 @@ export class RecordsService {
      if (!isSupportedFhirResource(resource) || resource.resourceType!==record.resourceType ||
          !verifyCommitment(resource,record.nonceHex,record.integrityCommitment) ||
          resource.id!==record.remoteRecordId ||
-         fhirPatientReference(resource)!==`Patient/${mapping.localPatientRef}`) {
+         (resource.subject as {reference:string}).reference!==`Patient/${mapping.localPatientRef}`) {
        await this.audit(principal.sub,request.patientId,requestId,record.id,'INTEGRITY_MISMATCH');
        throw new ConflictException('Record integrity validation failed');
      }
@@ -89,21 +76,11 @@ export class RecordsService {
      }
      // IMPORTANT: local integrity check != Cardano confirmation.
      await this.audit(principal.sub,request.patientId,requestId,record.id,'LOCAL_INTEGRITY_VALID');
-     return {recordId:record.id,sourceHospital:record.hospital.name,
+     result.push({recordId:record.id,sourceHospital:record.hospital.name,
        resource,integrity:{localHash:'MATCH',cardano:record.anchorStatus},
-       consentVerification:'LOCAL_DEMO_NOT_MIDNIGHT'};
-   });
-   // Final gate after every asynchronous hospital response: do not emit a
-   // partially authorized batch if a consent was revoked mid-flight.
-   const finalConsent=await this.data.db.consent.findUnique({where:{id:request.consent.id}});
-   if(records.some(r=>!isConsentValid(finalConsent,{patientId:request.patientId,
-       doctorId:doctor.id,hospitalId:doctor.hospitalId,purpose:request.purpose,
-       resourceType:r.resourceType,now:new Date()})) ||
-      !isConsentValid(finalConsent,{patientId:request.patientId,doctorId:doctor.id,
-       hospitalId:doctor.hospitalId,purpose:request.purpose,
-       resourceType:request.requestedTypes[0],now:new Date()}))
-       throw new ForbiddenException('Consent changed before the batch could be returned');
-   return page ? {items:result,nextCursor:fetched.length>page.limit?records.at(-1)?.id??null:null} : result;
+       consentVerification:'LOCAL_DEMO_NOT_MIDNIGHT'});
+   }
+   return result;
  }
  private async audit(actorSub:string,patientId:string,requestId:string,recordIndexId:string,outcome:string) {
    await this.data.db.auditEvent.create({data:{actorSub,patientId,requestId,recordIndexId,action:'RECORD_ACCESS',outcome}});
