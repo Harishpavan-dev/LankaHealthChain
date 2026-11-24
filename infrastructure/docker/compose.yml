@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: bootstrap_admin
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      LHC_CORE_DB_PASSWORD: ${LHC_CORE_DB_PASSWORD:?Set unique core database password}
+      LHC_NORTHERN_DB_PASSWORD: ${LHC_NORTHERN_DB_PASSWORD:?Set unique northern database password}
+      LHC_JAFFNA_DB_PASSWORD: ${LHC_JAFFNA_DB_PASSWORD:?Set unique jaffna database password}
+      LHC_VENUS_DB_PASSWORD: ${LHC_VENUS_DB_PASSWORD:?Set unique venus database password}
+      POSTGRES_DB: postgres
+    ports:
+      - '127.0.0.1:5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ../postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U bootstrap_admin -d postgres']
+      interval: 5s
+      timeout: 3s
+      retries: 15
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.2
+    command: start-dev --import-realm
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: devadmin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Set KEYCLOAK_ADMIN_PASSWORD in .env}
+    ports:
+      - '127.0.0.1:8080:8080'
+    volumes:
+      - ../keycloak/realm-config:/opt/keycloak/data/import:ro
+
+volumes:
+  pgdata:

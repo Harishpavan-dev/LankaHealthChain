@@ -1,0 +1,15 @@
+{
+  "name": "@lhc/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./auth": "./src/auth.ts",
+    "./styles": "./src/styles.css",
+    "./components": "./src/components.tsx"
+  },
+  "dependencies": {
+    "keycloak-js": "^26.0.0",
+    "react": "^19.0.0"
+  }
+}

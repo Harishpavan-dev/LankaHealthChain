@@ -1,0 +1,26 @@
+{
+  "name": "@lhc/database",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "db:generate": "prisma generate --config prisma.config.ts",
+    "db:migrate": "prisma migrate deploy --config prisma.config.ts",
+    "db:dev": "prisma migrate dev --config prisma.config.ts",
+    "db:seed": "tsx prisma/seed.ts",
+    "build": "prisma generate --config prisma.config.ts && tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@prisma/client": "^7.0.0",
+    "@prisma/adapter-pg": "^7.0.0",
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "prisma": "^7.0.0",
+    "dotenv": "^16.4.0",
+    "@types/pg": "^8.11.0"
+  },
+  "main": "./dist/src/client.js",
+  "types": "./dist/src/client.d.ts"
+}

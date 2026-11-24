@@ -1,0 +1,25 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
+:root{font-family:'DM Sans',Arial,sans-serif;color:#16344a;background:#f5f8fa;font-synthesis:none}
+*{box-sizing:border-box}body{margin:0;min-height:100vh}h1,h2,h3{font-family:'Manrope',Arial,sans-serif;letter-spacing:-.03em}
+button,input,select{font:inherit}button{cursor:pointer}button:disabled{cursor:not-allowed;opacity:.5}
+.app{display:grid;grid-template-columns:252px minmax(0,1fr);min-height:100vh}
+.sidebar{background:#0b3549;padding:28px 20px;color:#fff;display:flex;flex-direction:column;gap:34px}
+.brand{display:flex;align-items:center;gap:10px;font-family:Manrope,sans-serif;font-size:17px;font-weight:800;letter-spacing:-.05em}.brand .mark{width:34px;height:34px;border-radius:12px;background:#c6f0db;color:#0b3549;display:grid;place-items:center;font-size:19px}
+.nav-title{font-size:11px;letter-spacing:.16em;text-transform:uppercase;opacity:.58;margin-bottom:14px;padding-left:11px}
+.nav-link{display:flex;align-items:center;gap:13px;color:#d5e6eb;background:transparent;border:0;border-radius:11px;padding:13px 12px;width:100%;text-align:left;margin:4px 0;font-weight:600;font-size:13px}.nav-link.active{background:#1e5262;color:white}
+.sidebar-footer{margin-top:auto;font-size:12px;color:#b2cbd3;line-height:1.6}.tagline{margin:0;opacity:.85}
+.main{padding:38px clamp(22px,4vw,72px);max-width:1500px;width:100%;margin:auto}
+.top{display:flex;justify-content:space-between;gap:18px;align-items:start;margin-bottom:36px}.eyebrow{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#4a8d86;font-weight:800}.top h1{margin:7px 0 6px;font-size:30px}.muted{color:#788d9c;font-size:14px}.subtitle{color:#647e8c;font-size:14px;margin:0}.pill{display:inline-flex;padding:8px 12px;border-radius:999px;background:#e2f6ed;color:#17704c;font-size:11px;font-weight:800;letter-spacing:.04em}
+.card{background:white;border:1px solid #e5eef1;border-radius:18px;padding:23px;box-shadow:0 6px 24px #123c5510;margin-bottom:20px}
+.card h2{font-size:17px;margin:0 0 12px}.card h3{margin:0 0 5px}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}.stat-val{font-family:Manrope,sans-serif;font-weight:800;font-size:30px;color:#133b52;margin-top:11px}
+.stat-label{color:#6f8492;font-size:12px;font-weight:700}.stat-icon{font-size:22px;opacity:.7}
+.section-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:28px 0 15px}.section-head h2{margin:0;font-size:18px}
+.record{padding:15px 0;border-bottom:1px solid #ecf0f3;display:flex;align-items:center;justify-content:space-between;gap:18px}.record:last-child{border-bottom:0}.record-title{font-weight:800;font-size:14px}.record-meta{color:#738b99;font-size:12px;margin-top:6px}.actions{display:flex;gap:9px;flex-wrap:wrap}
+.btn{border:0;background:#126e6c;color:white;border-radius:9px;font-size:12px;font-weight:800;padding:11px 16px}.btn.secondary{background:#eaf3f4;color:#1c6268}.btn.danger{background:#fff0ee;color:#a34234}.btn.outline{background:white;color:#2e7180;border:1px solid #cadddf}
+.notice{padding:13px 15px;border-radius:11px;font-size:12px;margin-bottom:20px;border:1px solid #cde8e1;background:#ecfaf5;color:#2f7464}
+.notice.warning{border-color:#f4d8a8;background:#fff8e9;color:#825a22}.notice.error{border-color:#f1beb9;background:#fff2f0;color:#934037}
+.input{background:white;width:100%;padding:13px;border:1px solid #dbe7ea;border-radius:9px;font-size:14px;color:#16344a}.field{margin-bottom:16px}.field label{display:block;font-size:12px;font-weight:800;margin-bottom:7px}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+pre.json{overflow:auto;background:#0f3140;color:#ebffff;border-radius:12px;padding:18px;font-size:12px;line-height:1.7;max-height:420px}
+.empty{padding:22px;color:#8699a4;font-size:13px;text-align:center}.auth{max-width:520px;margin:12vh auto;padding:46px}.auth h1{margin:14px 0}.logout{background:none;border:1px solid #dce7ec;color:#4b6977;border-radius:10px;padding:11px;font-size:12px;font-weight:700}
+@media(max-width:900px){.app{grid-template-columns:1fr}.sidebar{padding:16px 23px;gap:14px}.sidebar nav,.sidebar-footer{display:none}.main{padding:25px 18px}.grid{grid-template-columns:1fr}.top h1{font-size:25px}.form-grid{grid-template-columns:1fr}.record{align-items:flex-start;flex-direction:column}}

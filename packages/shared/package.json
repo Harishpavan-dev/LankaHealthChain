@@ -1,0 +1,32 @@
+{
+  "name": "@lhc/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./crypto": "./dist/crypto.js",
+    "./authorization": "./dist/authorization.js",
+    "./fhir": "./dist/fhir.js",
+    "./internal-token": "./dist/internal-token.js"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "build": "tsc -p tsconfig.json"
+  },
+  "typesVersions": {
+    "*": {
+      "crypto": [
+        "dist/crypto.d.ts"
+      ],
+      "authorization": [
+        "dist/authorization.d.ts"
+      ],
+      "fhir": [
+        "dist/fhir.d.ts"
+      ],
+      "internal-token": [
+        "dist/internal-token.d.ts"
+      ]
+    }
+  }
+}

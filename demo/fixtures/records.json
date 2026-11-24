@@ -1,0 +1,110 @@
+{
+  "northern": [
+    {
+      "externalId": "obs-hgb-001",
+      "localPatientId": "arun-n-0001",
+      "resourceType": "Observation",
+      "version": 1,
+      "fhir": {
+        "resourceType": "Observation",
+        "id": "obs-hgb-001",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "718-7",
+              "display": "Hemoglobin [Mass/volume] in Blood"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/arun-n-0001"
+        },
+        "effectiveDateTime": "2026-11-15T10:00:00+05:30",
+        "valueQuantity": {
+          "value": 13.4,
+          "unit": "g/dL",
+          "system": "http://unitsofmeasure.org",
+          "code": "g/dL"
+        }
+      }
+    },
+    {
+      "externalId": "diag-blood-001",
+      "localPatientId": "arun-n-0001",
+      "resourceType": "DiagnosticReport",
+      "version": 1,
+      "fhir": {
+        "resourceType": "DiagnosticReport",
+        "id": "diag-blood-001",
+        "status": "final",
+        "code": {
+          "text": "Full blood count"
+        },
+        "subject": {
+          "reference": "Patient/arun-n-0001"
+        },
+        "result": [
+          {
+            "reference": "Observation/obs-hgb-001"
+          }
+        ]
+      }
+    }
+  ],
+  "jaffna": [
+    {
+      "externalId": "med-para-001",
+      "localPatientId": "arun-j-0099",
+      "resourceType": "MedicationRequest",
+      "version": 1,
+      "fhir": {
+        "resourceType": "MedicationRequest",
+        "id": "med-para-001",
+        "status": "active",
+        "intent": "order",
+        "subject": {
+          "reference": "Patient/arun-j-0099"
+        },
+        "medicationCodeableConcept": {
+          "text": "Synthetic demonstration medication only"
+        },
+        "authoredOn": "2026-11-17"
+      }
+    }
+  ],
+  "venus": [
+    {
+      "externalId": "obs-bp-001",
+      "localPatientId": "arun-v-0088",
+      "resourceType": "Observation",
+      "version": 1,
+      "fhir": {
+        "resourceType": "Observation",
+        "id": "obs-bp-001",
+        "status": "final",
+        "code": {
+          "text": "Blood pressure - synthetic demonstration"
+        },
+        "subject": {
+          "reference": "Patient/arun-v-0088"
+        },
+        "valueQuantity": {
+          "value": 120,
+          "unit": "mmHg"
+        }
+      }
+    }
+  ]
+}

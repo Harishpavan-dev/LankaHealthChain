@@ -1,0 +1,24 @@
+{
+  "name": "@lhc/hospital-database",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "db:generate": "prisma generate --config prisma.config.ts",
+    "db:migrate:all": "sh ../../scripts/migrate-hospitals.sh",
+    "db:seed:all": "tsx ../../scripts/seed-hospitals.ts",
+    "build": "prisma generate --config prisma.config.ts && tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@prisma/client": "^7.0.0",
+    "@prisma/adapter-pg": "^7.0.0",
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "prisma": "^7.0.0",
+    "dotenv": "^16.4.0"
+  },
+  "main": "./dist/src/client.js",
+  "types": "./dist/src/client.d.ts"
+}

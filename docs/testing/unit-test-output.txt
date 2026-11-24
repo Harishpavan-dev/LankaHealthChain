@@ -1,0 +1,152 @@
+TAP version 13
+# (node:1708) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: scoped active consent authorizes
+ok 1 - scoped active consent authorizes
+  ---
+  duration_ms: 1.217432
+  type: 'test'
+  ...
+# Subtest: consent blocks revoked
+ok 2 - consent blocks revoked
+  ---
+  duration_ms: 0.153541
+  type: 'test'
+  ...
+# Subtest: consent blocks status denied
+ok 3 - consent blocks status denied
+  ---
+  duration_ms: 0.116506
+  type: 'test'
+  ...
+# Subtest: consent blocks different doctor
+ok 4 - consent blocks different doctor
+  ---
+  duration_ms: 0.11245
+  type: 'test'
+  ...
+# Subtest: consent blocks different hospital
+ok 5 - consent blocks different hospital
+  ---
+  duration_ms: 0.140692
+  type: 'test'
+  ...
+# Subtest: consent blocks different patient
+ok 6 - consent blocks different patient
+  ---
+  duration_ms: 0.126441
+  type: 'test'
+  ...
+# Subtest: consent blocks wrong purpose
+ok 7 - consent blocks wrong purpose
+  ---
+  duration_ms: 0.109294
+  type: 'test'
+  ...
+# Subtest: consent blocks wrong type
+ok 8 - consent blocks wrong type
+  ---
+  duration_ms: 0.096515
+  type: 'test'
+  ...
+# Subtest: consent blocks expired
+ok 9 - consent blocks expired
+  ---
+  duration_ms: 0.363217
+  type: 'test'
+  ...
+# Subtest: expiry boundary is exclusive
+ok 10 - expiry boundary is exclusive
+  ---
+  duration_ms: 0.47849
+  type: 'test'
+  ...
+# Subtest: FHIR type allowlist rejects unexpected and repeated scopes
+ok 11 - FHIR type allowlist rejects unexpected and repeated scopes
+  ---
+  duration_ms: 0.296326
+  type: 'test'
+  ...
+# (node:1709) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: canonical JSON stable under key ordering
+ok 12 - canonical JSON stable under key ordering
+  ---
+  duration_ms: 1.21586
+  type: 'test'
+  ...
+# Subtest: commitment detects report tampering and incorrect nonce
+ok 13 - commitment detects report tampering and incorrect nonce
+  ---
+  duration_ms: 1.363222
+  type: 'test'
+  ...
+# Subtest: reject invalid non-JSON and bad hash values
+ok 14 - reject invalid non-JSON and bad hash values
+  ---
+  duration_ms: 0.424028
+  type: 'test'
+  ...
+# (node:1715) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: each simulated hospital contains valid synthetic resource envelopes
+ok 15 - each simulated hospital contains valid synthetic resource envelopes
+  ---
+  duration_ms: 3.222539
+  type: 'test'
+  ...
+# (node:1741) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: FHIR envelope validates allowed resource types
+ok 16 - FHIR envelope validates allowed resource types
+  ---
+  duration_ms: 0.657499
+  type: 'test'
+  ...
+# (node:1752) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: internal record token valid and scoped
+ok 17 - internal record token valid and scoped
+  ---
+  duration_ms: 2.243366
+  type: 'test'
+  ...
+# Subtest: token fails after expiry or with wrong secret or changed signature
+ok 18 - token fails after expiry or with wrong secret or changed signature
+  ---
+  duration_ms: 0.645622
+  type: 'test'
+  ...
+# Subtest: token rejects inadequate service secret
+ok 19 - token rejects inadequate service secret
+  ---
+  duration_ms: 0.174182
+  type: 'test'
+  ...
+# Subtest: every core Prisma model and scalar column appears in initial SQL migration
+ok 20 - every core Prisma model and scalar column appears in initial SQL migration
+  ---
+  duration_ms: 2.023645
+  type: 'test'
+  ...
+# Subtest: each hospital Prisma model and scalar column appears in initial SQL migration
+ok 21 - each hospital Prisma model and scalar column appears in initial SQL migration
+  ---
+  duration_ms: 0.117848
+  type: 'test'
+  ...
+# Subtest: separate core and hospital migration histories exist
+ok 22 - separate core and hospital migration histories exist
+  ---
+  duration_ms: 0.483377
+  type: 'test'
+  ...
+1..22
+# tests 22
+# suites 0
+# pass 22
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 312.038425
