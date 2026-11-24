@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import { createPrismaClient } from '../packages/hospital-database/src/client';
 
 const records = JSON.parse(readFileSync(resolve(__dirname, '../demo/fixtures/records.json'), 'utf8'));
+const population = JSON.parse(readFileSync(resolve(__dirname, '../demo/fixtures/population.json'), 'utf8'));
 async function main() {
  for (const code of ['northern','jaffna','venus'] as const) {
    const url=process.env[`HOSPITAL_${code.toUpperCase()}_DATABASE_URL`];
@@ -14,7 +15,11 @@ async function main() {
        await db.medicalRecord.upsert({where:{externalId_version:{externalId:r.externalId,version:r.version}},
          update:{},create:r});
      }
-     console.log(`Seeded synthetic hospital: ${code}`);
+     for(const r of population.records[code]){
+       await db.medicalRecord.upsert({where:{externalId_version:{externalId:r.externalId,version:r.version}},
+         update:{},create:r});
+     }
+     console.log(`Seeded synthetic hospital: ${code}, ${records[code].length + population.records[code].length} records`);
    } finally { await db.$disconnect(); }
  }
 }

@@ -32,5 +32,11 @@ services:
     volumes:
       - ../keycloak/realm-config:/opt/keycloak/data/import:ro
 
+  midnight-proof-server:
+    image: midnightntwrk/proof-server:9.0.2
+    profiles: ['midnight']
+    ports: ['127.0.0.1:6300:6300']
+    restart: 'no'
+
 volumes:
   pgdata:

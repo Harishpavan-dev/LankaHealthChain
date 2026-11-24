@@ -1,14 +1,19 @@
+> **v0.4.0 SOURCE PREVIEW (synthetic data only):** 7 Core SQL migrations, 2 reusable Hospital SQL migrations, durable PostgreSQL-backed HMAC token replay protection, operator-pinned Hospital URLs, Cardano proof-to-record binding, cursor-pagination, paginated patient audit, API database readiness, an optional Ledger 9 prover container and real-stack E2E test *scripts*. These scripts require external Docker/Keycloak/PostgreSQL to run. Cardano on-chain submission and Midnight ZK authorization remain **UNVERIFIED/UNINTEGRATED**. See `docs/testing/RELEASE_NOTES_0.4.md`.
+
 # LankaHealthChain
 
 **Federated Healthcare Records · Patient Consent · Verifiable Integrity**
 
 UniHack 2026 hackathon implementation | Apache-2.0 | **synthetic medical data only**.
 
-> **STATUS: Foundation + local-consent demo implementation (not production-ready).**
-> Core NestJS endpoints, hospital simulators, versioned Prisma SQL migrations and
-> React dashboards are included. Live database migrations, browser E2E, Cardano
-> Preprod transactions, Midnight Compact contract deployment, and real ZK proofs
-> have NOT yet been executed or completed. Never enter real patient information.
+> **STATUS: Runnable source-code prototype; only offline tests verified here; NOT production-ready.**
+> NestJS `/api/v1` controllers, three hospital simulators, four independently managed PostgreSQL
+> databases (Core + three hospital databases), versioned SQL migrations, React portals, consent flow, restricted record creation,
+> Cardano Merkle tooling, worker and Ledger 9 Compact draft are included.
+> Docker services, live database migrations, browser E2E, signed Cardano Preprod
+> transactions, Midnight contract compilation/deployment and real ZK proofs
+> are **UNVERIFIED or NOT COMPLETED** in this authoring environment.
+> Synthetic patient records only; never enter real medical information.
 
 ## System architecture
 
@@ -25,14 +30,73 @@ flowchart TB
   N --> NDB[(Northern DB)]
   J --> JDB[(Jaffna DB)]
   V --> VDB[(Venus DB)]
-  API -.planned-.-> MID[Midnight - proof verification]
-  API -.planned-.-> CAR[Cardano - batch anchoring]
+  API -.not wired-.-> MID[Midnight Compact - source draft only]
+  API -.operator scripts-.-> CAR[Cardano Preprod offline preparation + verification]
 ```
 
 Three hospital simulators are **mocked institutional integrations**, not actual
 connections to the named hospitals. Their clinical resources are stored separately;
 the Core stores registry, identity mappings, consent, record references, randomized
 integrity commitments, and audit logs. Core never opens hospital SQL connections.
+
+
+## Quick start – all local demo services (Docker)
+
+> **Development-only**: your computer must have Docker, network package access and
+> enough memory. This stack has not been run in the authoring environment.
+
+```bash
+node scripts/setup-local.mjs  # creates .env with secure random passwords; once only
+docker compose --env-file .env \
+  -f infrastructure/docker/compose.yml \
+  -f infrastructure/docker/compose.app.yml up -d --build
+```
+
+On a compatible developer machine, this Compose configuration is intended to initialize four PostgreSQL logical databases, run **all committed SQL migrations**,
+seeds 101 wholly synthetic patients / 504 fake record references, and starts the Core API, three hospital services, Keycloak,
+and three React development portals. Each API, hospital and UI runs as a separate service.
+
+| Service | Local address |
+|---|---|
+| Patient portal | http://localhost:5173 |
+| Doctor portal | http://localhost:5174 |
+| Network admin | http://localhost:5175 |
+| Core API | http://localhost:3000/api/v1/health |
+| Swagger, development only | http://localhost:3000/api/docs |
+| Keycloak | http://localhost:8080 |
+
+**Synthetic Keycloak development accounts** (never use on public networks):
+- patient: `patient.arun` / `DemoPatient123!`
+- doctor: `doctor.venus` / `DemoDoctor123!`
+- network admin: `admin.network` / `DemoAdmin123!`
+
+After creating a synthetic Observation in Doctor Portal, patient approval allows
+fetching cross-hospital data. Newly registered records have `Cardano: PENDING`;
+local authorization explicitly says `LOCAL_DEMO_NOT_MIDNIGHT`.
+
+To prepare **offline** randomized Cardano batches after migrations+seed:
+
+```bash
+mkdir -p private/cardano-batches
+docker compose --env-file .env -f infrastructure/docker/compose.yml \
+  -f infrastructure/docker/compose.app.yml --profile operator \
+  run --rm cardano-preparer
+```
+
+This processes every currently pending outbox event in batches of up to 100.
+It creates public `cardano-metadata.json` and **private** inclusion proofs under
+`private/cardano-batches/<merkle-root>/`. It does **not** submit any transaction.
+
+Stop without deleting databases:
+
+```bash
+docker compose --env-file .env -f infrastructure/docker/compose.yml \
+  -f infrastructure/docker/compose.app.yml down
+```
+
+**Never** run `down -v` unless intentionally deleting all demo database volumes.
+See [Tamil walkthrough](docs/setup-tamil.md) and
+[deployment acceptance checklist](docs/testing/deployment-checklist.md).
 
 ## Prerequisites
 
@@ -104,10 +168,15 @@ Migration sequence:
 
 - Core `202611220001_init/migration.sql`
 - Core `202611220002_constraints/migration.sql`
+- Core `202611220003_hardening/migration.sql`
+- Core `202611220004_anchor_lookup/migration.sql`
+- Core `202611220005_outbox_idempotency/migration.sql`
 - Hospital `202611220001_init/migration.sql` **three independent executions**.
 
-`pnpm db:seed` inserts the synthetic Arun demo (4 FHIR-style resources in 3 hospitals)
-and central pseudonymous identity/record-index entries. No Cardano transaction is issued.
+`pnpm db:seed` inserts the Arun demo (4 FHIR-style resources in 3 hospitals), plus
+100 generated fictional patients and 500 additional fake records (101 patients, 504 records total),
+with central pseudonymous identity/record-index entries. Only Arun has a configured
+Keycloak demo account; the additional patients are load-test fixtures. No Cardano transaction is issued.
 
 ## Step 6 - Start services (seven terminals)
 
@@ -195,8 +264,11 @@ validated Keycloak access token (issuer, audience, algorithm, key, expiration).
 | GET | `/api/v1/patients/me/timeline` | Patient record index |
 | GET | `/api/v1/patients/me/consents` | Patient consent history |
 | GET | `/api/v1/audit/me` | Patient access audit |
+| POST | `/api/v1/records` | Verified clinician creates synthetic FHIR record in own hospital |
+| GET | `/api/v1/records/:id/verification` | Scope-checked integrity / Cardano anchor status |
+| GET | `/api/v1/admin/summary` | Admin-only aggregate operational summary |
 
-Internal hospital APIs use `/internal/v1/records/:externalId` and are NOT public APIs.
+Internal hospital APIs use `GET /internal/v1/records/:externalId` and `POST /internal/v1/records`; they are NOT public APIs.
 They accept short-lived, narrowly scoped HMAC service tokens. **Production requires
 mTLS/asymmetric inter-service identity, stronger patient identity mapping, replay
 protections, secure secrets storage and audited network boundaries.**
@@ -224,17 +296,43 @@ tests/unit/             Executable dependency-free tests
 docs/                   Architecture ADRs, migrations, privacy, testing
 ```
 
+## Verification status
+
+**Observed in this environment (v0.4):** 62/62 Node unit + isolated protocol-double tests,
+49 TS/TSX syntax-transpilation checks and a 100-record
+Cardano Merkle proof CLI round-trip passed. These do not validate the real NestJS/Prisma
+startup or a live blockchain transaction. Details: [implementation report](docs/testing/IMPLEMENTATION_REPORT.md).
+
 ## Roadmap and non-goals
 
 - **Current increment:** Repository, SQL migrations, demo seeds, role-bound request flow,
-  local scoped consent, local integrity verification, basic portal UIs, unit tests.
+  local scoped consent, local integrity verification, doctor hospital record creation,
+  operator-generated Cardano Merkle batches, basic portal UIs, unit and protocol tests.
 - **Next increment:** Real database integration tests, transaction-bound audit/outbox,
   stronger service boundaries, real FHIR R4 profile validation and HAPI FHIR adapter.
-- **Blockchain increment:** Real Compact contract / Midnight proof verifier, Cardano
-  Preprod batch anchor writer/verification, testnet evidence, key handling.
+- **Blockchain increment:** Compile/deploy the supplied Ledger 9 Compact source and
+  connect Midnight.js proof verification; sign/submit real Cardano Preprod batch
+  transactions using supplied operator scripts, confirm/import evidence, and secure keys.
 - **Production:** External audit, hospital approval, privacy/legal review, HA,
   production-grade IAM/PKI, key rotation, backups, encrypted identity mapping,
   deployment and performance tests.
 
 See [security notes](SECURITY.md), [architecture decisions](docs/architecture/adr/), and
 [testing status](docs/testing/status.md). No clinical safety or regulatory claims are made.
+
+## v0.4.0 – Real-stack verification on YOUR local machine
+
+```bash
+node scripts/qa/preflight.mjs
+# on a fresh checkout, generate .env once, then start Docker (see Quick start)
+LHC_HEALTH_ATTEMPTS=60 node scripts/qa/live-smoke.mjs
+LHC_ACCEPT_SYNTHETIC_WRITE=YES node scripts/qa/live-flow.mjs
+```
+
+The last script intentionally uses a local-only `lhc-test-cli` Keycloak client
+for synthetic OIDC E2E. It writes a fake Observation, checks the patient-owned
+record timeline and approved cross-hospital access, and verifies revocation.
+The script and GitHub Action are authored but **NOT EXECUTED** in this
+authoring environment, which lacks Docker, Postgres, pnpm and Compact.
+Production must not expose the demo realm, its test client, or these logins.
+Full details and residual blockers: `docs/testing/RELEASE_NOTES_0.4.md`.

@@ -11,6 +11,7 @@ export type InternalRecordClaims = {
   iat: number;
   exp: number;
   jti: string;
+  action: 'read' | 'write';
 };
 function secretBytes(secret: string): Buffer {
   if (Buffer.byteLength(secret, 'utf8') < 32) throw new Error('INTERNAL_JWT_SECRET must contain at least 32 bytes');
@@ -21,12 +22,12 @@ function hmac(data: string, secret: string): Buffer {
 }
 /** Scoped HMAC bearer token for private demo networks, NOT a production OIDC / mTLS substitute. */
 export function issueRecordToken(
-  args: Pick<InternalRecordClaims, 'hospitalCode' | 'externalRecordId' | 'localPatientId' | 'resourceType' | 'version'>,
+  args: Pick<InternalRecordClaims, 'hospitalCode' | 'externalRecordId' | 'localPatientId' | 'resourceType' | 'version'> & { action?: 'read' | 'write' },
   secret: string,
   nowSeconds = Math.floor(Date.now() / 1000),
 ): string {
   const claims: InternalRecordClaims = {
-    iss: 'lhc-core', aud: 'lhc-hospital', ...args,
+    iss: 'lhc-core', aud: 'lhc-hospital', ...args, action: args.action ?? 'read',
     iat: nowSeconds, exp: nowSeconds + 45, jti: randomUUID(),
   };
   const payload = Buffer.from(JSON.stringify(claims)).toString('base64url');
@@ -39,6 +40,12 @@ export function verifyRecordToken(token: string, secret: string, nowSeconds = Ma
   const parts = token.split('.');
   if (parts.length !== 3 || parts.some((p) => !/^[a-zA-Z0-9_-]+$/.test(p))) throw new Error('Malformed token');
   const [header, payload, signature] = parts;
+  // Reject noncanonical base64url: distinct token strings must not decode to
+  // the same authenticated bytes (important for replay-cache identity).
+  for (const segment of parts) {
+    if (Buffer.from(segment, 'base64url').toString('base64url') !== segment)
+      throw new Error('Noncanonical token encoding');
+  }
   const received = Buffer.from(signature, 'base64url');
   const expected = hmac(`${header}.${payload}`, secret);
   if (received.length !== expected.length || !timingSafeEqual(received, expected)) throw new Error('Bad signature');
@@ -48,8 +55,9 @@ export function verifyRecordToken(token: string, secret: string, nowSeconds = Ma
   if (c.iss !== 'lhc-core' || c.aud !== 'lhc-hospital' ||
       !Number.isSafeInteger(c.iat) || !Number.isSafeInteger(c.exp) ||
       c.exp <= nowSeconds || c.iat > nowSeconds + 5 || c.exp - c.iat > 45 ||
-      typeof c.jti !== 'string' || typeof c.hospitalCode !== 'string' || typeof c.externalRecordId !== 'string' ||
+      typeof c.jti !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(c.jti) || typeof c.hospitalCode !== 'string' || typeof c.externalRecordId !== 'string' ||
       typeof c.localPatientId !== 'string' || typeof c.resourceType !== 'string' ||
+      (c.action !== 'read' && c.action !== 'write') ||
       !Number.isSafeInteger(c.version) || c.version < 1) throw new Error('Invalid token claims');
   return c;
 }

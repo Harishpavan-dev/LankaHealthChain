@@ -12,3 +12,10 @@ coverage/
 .DS_Store
 .idea/
 .vscode/
+
+# Privileged Cardano working state
+/private/
+/cardano-out/
+**/private-inclusion-proofs.json
+**/*.skey
+**/*.seed

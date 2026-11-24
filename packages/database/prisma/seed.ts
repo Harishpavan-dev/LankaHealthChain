@@ -13,6 +13,7 @@ const patientId='b1111111-1111-4111-8111-111111111111';
 const doctorId='c1111111-1111-4111-8111-111111111111';
 const localRef={ northern:'arun-n-0001',jaffna:'arun-j-0099',venus:'arun-v-0088' } as const;
 const records = JSON.parse(readFileSync(resolve(__dirname,'../../../demo/fixtures/records.json'),'utf8'));
+const population = JSON.parse(readFileSync(resolve(__dirname,'../../../demo/fixtures/population.json'),'utf8'));
 async function main(){
  const db=createPrismaClient(process.env.DATABASE_URL || '');
  try{
@@ -32,13 +33,44 @@ async function main(){
      for(const r of records[code]){
        const unique={hospitalId:hospitalIds[code],remoteRecordId:r.externalId,recordVersion:r.version};
        const proof=createCommitment(r.fhir);
-       await db.medicalRecordIndex.upsert({where:{hospitalId_remoteRecordId_recordVersion:unique}, update:{},
+       const index=await db.medicalRecordIndex.upsert({where:{hospitalId_remoteRecordId_recordVersion:unique}, update:{},
          create:{patientId,hospitalId:hospitalIds[code],remoteRecordId:r.externalId,
            resourceType:r.resourceType,recordVersion:r.version,integrityCommitment:proof.commitment,
            nonceHex:proof.nonceHex,anchorStatus:'PENDING'}});
+       await db.outboxEvent.upsert({
+         where:{eventType_aggregateId:{eventType:'RECORD_REGISTERED',aggregateId:index.id}},
+         create:{eventType:'RECORD_REGISTERED',aggregateId:index.id,payload:{recordIndexId:index.id}},
+         update:{},
+       });
      }
    }
-   console.log('Seeded core with synthetic identities and integrity commitments (NOT Cardano-anchored)');
+   for (const person of population.patients){
+     await db.patient.upsert({where:{id:person.id},update:{},
+       create:{id:person.id,authSubject:person.authSubject,displayName:person.displayName}});
+     for(const code of Object.keys(hospitalIds) as Array<keyof typeof hospitalIds>){
+       await db.patientIdentityMap.upsert({where:{patientId_hospitalId:{patientId:person.id,hospitalId:hospitalIds[code]}},
+         update:{},create:{patientId:person.id,hospitalId:hospitalIds[code],localPatientRef:person.localRef[code]}});
+     }
+   }
+   for(const code of Object.keys(hospitalIds) as Array<keyof typeof hospitalIds>){
+     for(const r of population.records[code]){
+       const idx=Number(r.localPatientId.split('-').at(-1));
+       const person=population.patients[idx-1];
+       if(!person || r.localPatientId!==person.localRef[code])throw new Error('Synthetic patient mapping mismatch');
+       const proof=createCommitment(r.fhir);
+       const index=await db.medicalRecordIndex.upsert({
+         where:{hospitalId_remoteRecordId_recordVersion:{hospitalId:hospitalIds[code],remoteRecordId:r.externalId,recordVersion:r.version}},
+         update:{},create:{patientId:person.id,hospitalId:hospitalIds[code],remoteRecordId:r.externalId,
+           resourceType:r.resourceType,recordVersion:r.version,integrityCommitment:proof.commitment,
+           nonceHex:proof.nonceHex,anchorStatus:'PENDING'},
+       });
+       await db.outboxEvent.upsert({
+         where:{eventType_aggregateId:{eventType:'RECORD_REGISTERED',aggregateId:index.id}},
+         update:{},create:{eventType:'RECORD_REGISTERED',aggregateId:index.id,payload:{recordIndexId:index.id}},
+       });
+     }
+   }
+   console.log('Seeded 101 synthetic patients and 504 total medical record references (NOT Cardano-anchored)');
  } finally {await db.$disconnect();}
 }
 main().catch(e=>{console.error(e);process.exitCode=1});

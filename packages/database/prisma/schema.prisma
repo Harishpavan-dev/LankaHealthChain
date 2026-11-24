@@ -52,6 +52,7 @@ model PatientIdentityMap {
   patient         Patient   @relation(fields: [patientId], references: [id], onDelete: Restrict)
   hospital        Hospital  @relation(fields: [hospitalId], references: [id], onDelete: Restrict)
   @@unique([patientId, hospitalId])
+  @@unique([hospitalId, localPatientRef])
 }
 
 model MedicalRecordIndex {
@@ -61,7 +62,7 @@ model MedicalRecordIndex {
   remoteRecordId      String
   resourceType        String
   recordVersion       Int
-  integrityCommitment String
+  integrityCommitment String         @unique
   nonceHex            String         // Off-chain secret, never upload to a public chain
   anchorStatus        String         @default("PENDING")
   createdAt           DateTime       @default(now()) @db.Timestamptz(3)
@@ -70,6 +71,8 @@ model MedicalRecordIndex {
   anchors             RecordAnchor[]
   @@unique([hospitalId, remoteRecordId, recordVersion])
   @@index([patientId, resourceType])
+  @@index([patientId, createdAt(sort: Desc)])
+  @@index([anchorStatus, createdAt])
 }
 
 model AccessRequest {
@@ -104,6 +107,7 @@ model Consent {
   request           AccessRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
   patient           Patient       @relation(fields: [patientId], references: [id], onDelete: Restrict)
   @@index([doctorId, status, expiresAt])
+  @@index([patientId, createdAt(sort: Desc)])
 }
 
 model RecordAnchor {
@@ -116,6 +120,7 @@ model RecordAnchor {
   createdAt      DateTime           @default(now()) @db.Timestamptz(3)
   record         MedicalRecordIndex @relation(fields: [recordIndexId], references: [id], onDelete: Restrict)
   @@index([recordIndexId])
+  @@unique([recordIndexId, batchId])
 }
 
 model AuditEvent {
@@ -141,4 +146,5 @@ model OutboxEvent {
   publishedAt  DateTime? @db.Timestamptz(3)
   createdAt    DateTime  @default(now()) @db.Timestamptz(3)
   @@index([publishedAt, createdAt])
+  @@unique([eventType, aggregateId])
 }
