@@ -1,10 +1,11 @@
+import { ThrottlerGuard } from '@nestjs/throttler';
 import { Controller,Get,Req,UseGuards } from '@nestjs/common';
 import { ApiBearerAuth,ApiTags } from '@nestjs/swagger';
 import { JwtGuard,AuthenticatedRequest } from '../security/jwt.guard';
 import { requireRole } from '../security/roles';
 import { CoreDbService } from '../database/db.service';
 /** Deliberately exposes only aggregate operational counts: no clinical payloads. */
-@ApiTags('administration') @ApiBearerAuth() @UseGuards(JwtGuard)
+@ApiTags('administration') @ApiBearerAuth() @UseGuards(JwtGuard,ThrottlerGuard)
 @Controller({path:'admin',version:'1'})
 export class AdminController {
  constructor(private readonly data:CoreDbService){}
@@ -16,7 +17,7 @@ export class AdminController {
    this.data.db.doctor.count({where:{verified:true,active:true}}),
    this.data.db.patient.count(),
    this.data.db.medicalRecordIndex.count(),
-   this.data.db.accessRequest.count({where:{status:'PENDING'}}),
+   this.data.db.accessRequest.count({where:{status:'PENDING',decisionDeadlineAt:{gt:new Date()}}}),
    this.data.db.medicalRecordIndex.count({where:{anchorStatus:'PENDING'}}),
   ]);
   return {hospitals,verifiedDoctors,patients,recordReferences,pendingConsents,pendingAnchors,

@@ -1,6 +1,6 @@
 {
   "name": "lankahealthchain",
-  "version": "0.4.0",
+  "version": "0.6.0",
   "private": true,
   "packageManager": "pnpm@10.18.0",
   "engines": {
@@ -28,7 +28,9 @@
     "test:live-smoke": "node scripts/qa/live-smoke.mjs",
     "contracts:midnight:compile": "bash contracts/midnight/scripts/compile.sh",
     "preflight": "node scripts/qa/preflight.mjs",
-    "test:live-flow": "node scripts/qa/live-flow.mjs"
+    "test:live-flow": "node scripts/qa/live-flow.mjs",
+    "db:verify-isolation": "pnpm --filter @lhc/database db:verify-isolation",
+    "docs:check": "node scripts/qa/verify-openapi.mjs"
   },
   "devDependencies": {
     "typescript": "^5.9.0",

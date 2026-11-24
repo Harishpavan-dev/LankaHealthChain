@@ -10,7 +10,8 @@
 | GET | `/records/{id}/verification` | Owner patient or scoped doctor | Read status and optional Cardano Preprod confirmation |
 | POST | `/access-requests` | Verified doctor | Request specified patient resources |
 | GET | `/access-requests/mine` | Verified doctor | Own requests |
-| GET | `/access-requests/{id}/records` | Verified doctor + active consent | Authorized FHIR response |
+| GET | `/access-requests/{id}/records` | Verified doctor + active consent | Authorized FHIR response up to 100 records (explicit error if more) |
+| GET | `/access-requests/{id}/records/page?limit=25&cursor={uuid}` | Verified doctor + active consent | Bounded, patient-scoped FHIR response with `items` and `nextCursor` |
 | GET | `/patients/me/access-requests` | Patient | Pending requests |
 | POST | `/access-requests/{id}/approve` | Patient | Local-demo consent grant; **not Midnight** |
 | POST | `/access-requests/{id}/reject` | Patient | Reject pending |
@@ -36,7 +37,7 @@ Demo `POST /records` body:
 
 The server adds the source-hospital-local `Patient` reference and a unique resource id if absent. `GET /records/{id}/verification` reports `LOCAL_COMMITMENT_ONLY` until a separately confirmed public anchor has been imported. An arbitrary transaction hash is not verification evidence.
 
-**Intentional nonfeatures:** no open registration, no real patient import, no emergency bypass, no research exports, no automated public chain submission, no full FHIR profile validation. Common protections are rate limits, DTO reject-unknown-field behavior, no-store API headers, signed short-lived internal tokens and RBAC/ABAC scope checks. API responses with many records are capped at 100 in this demo; production pagination is pending.
+**Intentional nonfeatures:** no open registration, no real patient import, no emergency bypass, no research exports, no automated public chain submission, no full FHIR profile validation. Common protections are rate limits, DTO reject-unknown-field behavior, no-store API headers, signed short-lived internal tokens and RBAC/ABAC scope checks. The unpaged route rejects responses exceeding 100 records; the `/records/page` route uses bounded cursor pagination. Do not assume a missing page means missing clinical history.
 
 ### v0.4 pagination and verification
 
@@ -46,3 +47,12 @@ The server adds the source-hospital-local `Patient` reference and a unique resou
 - `GET /api/v1/records/{id}/verification` – patient owner or doctor with active scoped consent; checks Cardano metadata proof only if a confirmed transaction and Blockfrost Preprod API key are configured. Otherwise explicitly unverified.
 
 **Never interpret `LOCAL_COMMITMENT_ONLY` or `LOCAL_DEMO_NOT_MIDNIGHT` as completed public-blockchain proofs.**
+
+
+### v0.5 consent and FHIR notes
+
+Pending consent requests become unapprovable **24 hours** after creation; use `decisionDeadlineAt` in the returned request payload. Approved consent validity is separately constrained by `requestedDurationMinutes` (1 to 1440 minutes).
+
+FHIR R4 `AllergyIntolerance` patient references use **`patient.reference`**, while `Observation`, `DiagnosticReport`, `MedicationRequest` and `Condition` use `subject.reference`. The API binds the hospital-local identity itself and does not trust caller-supplied patient references. New clinical records are subject to a **256 KiB serialized payload cap** and a minimal synthetic-content validator; this is not formal FHIR conformance.
+
+All access requests require a verified doctor and every read must match the patient, doctor, requesting hospital, purpose, record type, current consent, and fresh source-hospital commitment.
