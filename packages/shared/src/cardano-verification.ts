@@ -1,4 +1,4 @@
-import { verifyMerkleProof, type InclusionProof } from './merkle.ts';
+import { verifyMerkleProofWithCount, type InclusionProof } from './merkle.ts';
 /** Blockfrost metadata response is authoritative only when retrieved from the
  * configured Cardano Preprod endpoint and the transaction is confirmed. */
 export type CardanoMetadataItem = {label:string;json_metadata?:unknown};
@@ -14,7 +14,7 @@ export function verifyBlockfrostAnchor(metadata:unknown, proof:InclusionProof, e
     (expectedCommitment===undefined || proof.commitment.toLowerCase()===expectedCommitment.toLowerCase()) &&
     // Do not accept a valid Merkle proof for a different medical record.
     Number.isSafeInteger(proof.index) && proof.index>=0 && proof.index<(body.count as number) &&
-    verifyMerkleProof(proof,body.root);
+    verifyMerkleProofWithCount(proof,body.root,body.count as number);
 }
 /** Read-only on-chain check, never signs or submits transactions. */
 export async function checkPreprodAnchor(txHash:string, proof:InclusionProof,

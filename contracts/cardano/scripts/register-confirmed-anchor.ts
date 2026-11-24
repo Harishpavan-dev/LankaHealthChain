@@ -6,15 +6,13 @@ import 'dotenv/config';
 import { readFileSync } from 'node:fs';
 import { createPrismaClient } from '../../../packages/database/src/client';
 import { verifyBlockfrostAnchor } from '../../../packages/shared/src/cardano-verification';
-import { type InclusionProof } from '../../../packages/shared/src/merkle';
+import { validateCompleteMerkleManifest, type InclusionProof } from '../../../packages/shared/src/merkle';
 const [manifestFile,txHash]=process.argv.slice(2);
 const key=process.env.BLOCKFROST_PREPROD_PROJECT_ID;
 if (!manifestFile || !/^[a-f0-9]{64}$/i.test(txHash||'') || !key)
  throw new Error('Usage: register-confirmed-anchor.ts <private-batch-manifest.json> <confirmed-preprod-tx-hash> and set BLOCKFROST_PREPROD_PROJECT_ID');
 const manifest=JSON.parse(readFileSync(manifestFile,'utf8')) as {root:string;proofs:InclusionProof[]};
-if (!Array.isArray(manifest.proofs) || manifest.proofs.length<1 || manifest.proofs.length>10000)
- throw new Error('Empty or oversized private manifest');
-if (!/^[0-9a-f]{64}$/i.test(manifest.root))throw new Error('Malformed batch root');
+if(!validateCompleteMerkleManifest(manifest)) throw new Error('Incomplete, mismatched or duplicate private batch manifest');
 async function onchain(path:string){
  const r=await fetch(`https://cardano-preprod.blockfrost.io/api/v0/txs/${txHash}${path}`,{
   headers:{project_id:key!},signal:AbortSignal.timeout(10000),redirect:'error'});

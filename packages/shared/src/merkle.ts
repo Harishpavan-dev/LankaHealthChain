@@ -62,3 +62,64 @@ export function cardanoAnchorMetadata(root: string, count: number): Record<strin
   if (!Number.isSafeInteger(count) || count < 1 || count > 10000) throw new Error('Invalid batch size');
   return {'1900':{v:1,alg:'LHC_SHA256_MERKLE_V1',root:root.toLowerCase(),count}};
 }
+
+/** Validate proof shape against the declared number of leaves, including
+ * duplicated-last-leaf padding. A valid root alone does not bind an index.
+ */
+export function verifyMerkleProofWithCount(p:InclusionProof,root:string,count:number):boolean {
+ if(!Number.isSafeInteger(count)||count<1||count>10000 || !p ||
+    !Number.isSafeInteger(p.index)||p.index<0||p.index>=count ||
+    !Array.isArray(p.siblings))return false;
+ let levels=0, width=count;
+ while(width>1){width=Math.ceil(width/2);levels++;}
+ if(p.siblings.length!==levels)return false;
+ width=count; let position=p.index;
+ for(let i=0;i<levels;i++){
+  const step=p.siblings[i];
+  if(!step || step.side!==(position%2===0?'right':'left'))return false;
+  // The odd trailing node is paired with itself; its sibling is not arbitrary.
+  if((position^1)>=width){
+   try{
+    let current=leaf(p.commitment);
+    for(let j=0;j<i;j++){
+     const s=p.siblings[j], sibling=valid(s.hash);
+     current=s.side==='right'?parent(current,sibling):parent(sibling,current);
+    }
+    if(!timingSafeEqual(current,valid(step.hash)))return false;
+   }catch{return false;}
+  }
+  position=Math.floor(position/2); width=Math.ceil(width/2);
+ }
+ return verifyMerkleProof(p,root);
+}
+/** Files used to register an anchor must cover ALL leaves exactly once. */
+export function validateCompleteMerkleManifest(m:unknown):m is {root:string;proofs:InclusionProof[]} {
+ try {
+  if(typeof m!=='object'||m===null||Array.isArray(m))return false;
+  const manifest=m as {root?:unknown;proofs?:unknown};
+  if(typeof manifest.root!=='string'||!HEX.test(manifest.root)||!Array.isArray(manifest.proofs)||
+     manifest.proofs.length<1||manifest.proofs.length>10000)return false;
+  const count=manifest.proofs.length, indices=new Set<number>(), commitments=new Set<string>();
+  for(const proof of manifest.proofs as InclusionProof[]){
+   if(!proof || !verifyMerkleProofWithCount(proof,manifest.root,count) ||
+      indices.has(proof.index) || commitments.has(proof.commitment.toLowerCase()))return false;
+   indices.add(proof.index);commitments.add(proof.commitment.toLowerCase());
+  }
+  return indices.size===count;
+ }catch{return false;}
+}
+/** Refuse additional public metadata keys so an operator cannot accidentally
+ * anchor plaintext patient identifiers alongside the privacy-safe Merkle root.
+ */
+export function validatePublicCardanoMetadata(input:unknown):boolean {
+ if(typeof input!=='object'||input===null||Array.isArray(input))return false;
+ const record=input as Record<string,unknown>;
+ if(Object.keys(record).length!==1 || !Object.hasOwn(record,'1900'))return false;
+ const value=record['1900'];
+ if(typeof value!=='object'||value===null||Array.isArray(value))return false;
+ const entry=value as Record<string,unknown>;
+ if(Object.keys(entry).length!==4 || !['v','alg','root','count'].every(k=>Object.hasOwn(entry,k)))return false;
+ return entry.v===1 && entry.alg==='LHC_SHA256_MERKLE_V1' &&
+  typeof entry.root==='string' && /^[a-f0-9]{64}$/.test(entry.root) &&
+  Number.isSafeInteger(entry.count) && (entry.count as number)>=1 && (entry.count as number)<=10000;
+}

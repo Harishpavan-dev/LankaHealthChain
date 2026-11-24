@@ -19,6 +19,7 @@ jobs:
       - run: pnpm test
       - run: pnpm test:protocol
       - run: pnpm check:syntax
+      - run: pnpm docs:check
       - run: pnpm --filter @lhc/shared build
       - name: Generate Prisma clients and build
         env:

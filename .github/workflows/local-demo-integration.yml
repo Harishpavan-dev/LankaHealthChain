@@ -21,6 +21,13 @@ jobs:
           docker compose --env-file .env \
             -f infrastructure/docker/compose.yml \
             -f infrastructure/docker/compose.app.yml up --build -d
+      - name: Verify independent database owners have no cross-database access
+        run: |
+          docker compose --env-file .env \
+            -f infrastructure/docker/compose.yml \
+            -f infrastructure/docker/compose.app.yml \
+            run --rm --no-deps migrate-and-seed \
+            pnpm db:verify-isolation
       - name: Verify API readiness and Keycloak discovery
         env:
           LHC_HEALTH_ATTEMPTS: '60'
