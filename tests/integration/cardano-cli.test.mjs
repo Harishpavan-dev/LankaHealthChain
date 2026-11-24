@@ -1,4 +1,4 @@
-/** Full CLI process round-trip of OFFLINE (not Preprod) Merkle anchoring tools. */
+/** Full CLI process round-trip of OFFLINE (not Preprod) Merkle anchoring toolss. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
