@@ -14,8 +14,14 @@ if [[ ! -f "$CARDANO_PREPROD_SIGNING_KEY_FILE" || ! -f "$CARDANO_METADATA_FILE" 
   echo 'Missing signing key or public metadata file' >&2; exit 2
 fi
 node - "$CARDANO_METADATA_FILE" <<'NODE'
-const fs=require('fs');const file=process.argv[2];const m=JSON.parse(fs.readFileSync(file));
-if(Object.keys(m).length!==1 || m['1900']?.v!==1 || m['1900']?.alg!=='LHC_SHA256_MERKLE_V1' || !/^[0-9a-f]{64}$/i.test(m['1900']?.root||''))
+const fs=require('fs'); const file=process.argv[2];
+const m=JSON.parse(fs.readFileSync(file));
+const e=m && typeof m==='object' && !Array.isArray(m) ? m['1900'] : null;
+if (Object.keys(m).length!==1 || !e || typeof e!=='object' || Array.isArray(e) ||
+    Object.keys(e).length!==4 || !['v','alg','root','count'].every(k=>Object.hasOwn(e,k)) ||
+    e.v!==1 || e.alg!=='LHC_SHA256_MERKLE_V1' ||
+    typeof e.root!=='string' || !/^[a-f0-9]{64}$/.test(e.root) ||
+    !Number.isSafeInteger(e.count) || e.count<1 || e.count>10000)
  throw new Error('Refusing unexpected metadata (possible PHI leakage)');
 NODE
 # A 2 ADA payment to self ensures the transaction has a normal output;

@@ -26,9 +26,9 @@ async function token(username,password){
  if(!response.ok||typeof body.access_token!=='string')throw new Error(`Demo test-client login failed: HTTP ${response.status}`);
  return body.access_token;
 }
-async function call(method,path,accessToken,body,expected=200){
+async function call(method,path,accessToken,body,expected=200,extraHeaders={}){
  const response=await fetch(`${base}${path}`,{method,redirect:'error',
-  headers:{Authorization:`Bearer ${accessToken}`,...(body===undefined?{}:{'Content-Type':'application/json'})},
+  headers:{Authorization:`Bearer ${accessToken}`,...(body===undefined?{}:{'Content-Type':'application/json'}),...extraHeaders},
   ...(body===undefined?{}:{body:JSON.stringify(body)}),signal:AbortSignal.timeout(12000)});
  let result;try{result=await response.json();}catch{result=null;}
  if(response.status!==expected){
@@ -42,10 +42,14 @@ async function main(){
  const doctor=await token('doctor.venus',process.env.LHC_DEMO_DOCTOR_PASSWORD||'DemoDoctor123!');
  const patient=await token('patient.arun',process.env.LHC_DEMO_PATIENT_PASSWORD||'DemoPatient123!');
  console.log('PASS: Keycloak issued both local demo access tokens');
- const init=await call('POST','/access-requests',doctor,{patientId,purpose:'treatment',
-  requestedTypes:['Observation','MedicationRequest'],requestedDurationMinutes:10},201);
+ const requestBody={patientId,purpose:'treatment',requestedTypes:['Observation','MedicationRequest'],requestedDurationMinutes:10};
+ const retryKey=`lhc-smoke-${randomUUID()}`;
+ const init=await call('POST','/access-requests',doctor,requestBody,201,{'Idempotency-Key':retryKey});
  verify(typeof init.id==='string','No request ID returned'); requestId=init.id;
- console.log('PASS: Doctor created a scoped request');
+ const retry=await call('POST','/access-requests',doctor,requestBody,201,{'Idempotency-Key':retryKey});
+ verify(retry.id===requestId,'Identical retry created a duplicate request');
+ await call('POST','/access-requests',doctor,{...requestBody,requestedDurationMinutes:11},409,{'Idempotency-Key':retryKey});
+ console.log('PASS: Doctor created scoped request; same-key retry deduplicated and changed body rejected');
  await call('GET',`/access-requests/${requestId}/records`,doctor,undefined,403);
  console.log('PASS: Pre-approval records are denied');
  const approved=await call('POST',`/access-requests/${requestId}/approve`,patient,undefined,201);
@@ -56,6 +60,11 @@ async function main(){
  verify(Array.isArray(records)&&records.length>=1,'No synthetic records returned');
  verify(records.every(r=>r.integrity?.localHash==='MATCH'),'A FHIR local integrity mismatch occurred');
  console.log(`PASS: Authorized cross-hospital retrieval (${records.length} synthetic records, local hash only)`);
+ const firstPage=await call('GET',`/access-requests/${requestId}/records/page?limit=1`,doctor);
+ verify(firstPage.items.length===1 && typeof firstPage.nextCursor==='string','Record page 1 or cursor missing');
+ const secondPage=await call('GET',`/access-requests/${requestId}/records/page?limit=1&cursor=${firstPage.nextCursor}`,doctor);
+ verify(secondPage.items.length===1 && secondPage.items[0].recordId!==firstPage.items[0].recordId,'Record pagination reused a row');
+ console.log('PASS: Real medical-record pagination and patient-scoped cursor traversal');
  await call('GET',`/access-requests/${requestId}/records`,patient,undefined,403);
  console.log('PASS: Patient token cannot impersonate doctor');
  const observationId=`smoke-${randomUUID()}`;

@@ -1,4 +1,8 @@
-> **v0.4.0 SOURCE PREVIEW (synthetic data only):** 7 Core SQL migrations, 2 reusable Hospital SQL migrations, durable PostgreSQL-backed HMAC token replay protection, operator-pinned Hospital URLs, Cardano proof-to-record binding, cursor-pagination, paginated patient audit, API database readiness, an optional Ledger 9 prover container and real-stack E2E test *scripts*. These scripts require external Docker/Keycloak/PostgreSQL to run. Cardano on-chain submission and Midnight ZK authorization remain **UNVERIFIED/UNINTEGRATED**. See `docs/testing/RELEASE_NOTES_0.4.md`.
+> **v0.6.0 BACKEND-FIRST SOURCE RELEASE (synthetic data only):** Complete version-controlled OpenAPI 3.1 specification for **19** implemented API routes (Swagger displays the same contract), public error envelope with `X-Request-ID`, doctor-scoped `Idempotency-Key` + Core SQL migration, FHIR retry content checks, bounded HTTP JSON body parsing, additional auth rate limits, private Hospital API documentation, and restrained **light-theme** UI polish. **100 offline tests pass. Full dependency-aware build, live DB migrations, Docker, Cardano Preprod and Midnight testnet remain unverified.** See [v0.6 release notes](docs/testing/RELEASE_NOTES_0.6.md).
+
+> **Historical v0.5.0 SOURCE RELEASE (synthetic data only):** Added 24-hour request approval deadlines, nine Core SQL migrations, FHIR R4 AllergyIntolerance.patient correctness and bounded clinical-write validation, 4-way bounded Hospital API retrieval, patient/doctor cursor pagination, improved Merkle manifest checks, Docker per-service secret isolation and real-stack database-owner isolation QA script. **Real Docker/PostgreSQL, Cardano Preprod and Midnight integration remain UNVERIFIED.** See [v0.5 release notes](docs/testing/RELEASE_NOTES_0.5.md).
+
+> **Historical v0.4.0 SOURCE PREVIEW:** 9 Core SQL migrations, 2 reusable Hospital SQL migrations, durable PostgreSQL-backed HMAC token replay protection, operator-pinned Hospital URLs, Cardano proof-to-record binding, cursor-pagination, paginated patient audit, API database readiness, an optional Ledger 9 prover container and real-stack E2E test *scripts*. These scripts require external Docker/Keycloak/PostgreSQL to run. Cardano on-chain submission and Midnight ZK authorization remain **UNVERIFIED/UNINTEGRATED**. See `docs/testing/RELEASE_NOTES_0.4.md`.
 
 # LankaHealthChain
 
@@ -62,7 +66,7 @@ and three React development portals. Each API, hospital and UI runs as a separat
 | Doctor portal | http://localhost:5174 |
 | Network admin | http://localhost:5175 |
 | Core API | http://localhost:3000/api/v1/health |
-| Swagger, development only | http://localhost:3000/api/docs |
+| Swagger, development only | http://localhost:3000/api/docs (version-controlled OpenAPI 3.1) |
 | Keycloak | http://localhost:8080 |
 
 **Synthetic Keycloak development accounts** (never use on public networks):
@@ -164,14 +168,19 @@ pnpm db:migrate
 pnpm db:seed
 ```
 
-Migration sequence:
+Migration sequence (now ten Core migrations plus two Hospital migrations):
 
 - Core `202611220001_init/migration.sql`
 - Core `202611220002_constraints/migration.sql`
 - Core `202611220003_hardening/migration.sql`
 - Core `202611220004_anchor_lookup/migration.sql`
 - Core `202611220005_outbox_idempotency/migration.sql`
-- Hospital `202611220001_init/migration.sql` **three independent executions**.
+- Core `202611220006_append_only_audit/migration.sql`
+- Core `202611220007_query_indexes/migration.sql`
+- Core `202611220008_request_expiration/migration.sql`
+- Core `202611220009_stable_pagination_indexes/migration.sql`
+- Core `202611220010_access_request_idempotency/migration.sql`
+- Hospital `202611220001_init/migration.sql` and `202611220002_durable_replay/migration.sql` **three independent executions each**.
 
 `pnpm db:seed` inserts the Arun demo (4 FHIR-style resources in 3 hospitals), plus
 100 generated fictional patients and 500 additional fake records (101 patients, 504 records total),
@@ -260,7 +269,10 @@ validated Keycloak access token (issuer, audience, algorithm, key, expiration).
 | POST | `/api/v1/access-requests/:id/approve` | Patient approves (demo only) |
 | POST | `/api/v1/access-requests/:id/reject` | Patient rejects |
 | POST | `/api/v1/consents/:id/revoke` | Patient revokes |
-| GET | `/api/v1/access-requests/:id/records` | Doctor reads authorized FHIR data |
+| GET | `/api/v1/access-requests/:id/records` | Doctor reads up to 100 records (returns explicit error if exceeded) |
+| GET | `/api/v1/access-requests/:id/records/page` | Patient-scoped cursor pagination, limit 1–100 |
+| GET | `/api/v1/patients/me/timeline/page` | Paginated patient timeline |
+| GET | `/api/v1/audit/me/page` | Paginated access history |
 | GET | `/api/v1/patients/me/timeline` | Patient record index |
 | GET | `/api/v1/patients/me/consents` | Patient consent history |
 | GET | `/api/v1/audit/me` | Patient access audit |
@@ -336,3 +348,38 @@ The script and GitHub Action are authored but **NOT EXECUTED** in this
 authoring environment, which lacks Docker, Postgres, pnpm and Compact.
 Production must not expose the demo realm, its test client, or these logins.
 Full details and residual blockers: `docs/testing/RELEASE_NOTES_0.4.md`.
+
+
+## v0.5.0 – Security and scalability patch
+
+- **9** committed Core SQL migrations and **2** reusable Hospital SQL migrations; no automatic schema push.
+- A pending doctor access request now expires after **24 hours** if the patient has not approved.
+- FHIR R4 AllergyIntolerance now uses `patient.reference` (not `subject.reference`).
+- Clinical creation validates minimum resource content and caps serialized FHIR payloads; **not full HL7 profile certification**.
+- Cross-hospital retrieval runs with a maximum of **4 simultaneous upstream calls**, validates consent again before response delivery and fails the entire batch if any record fails.
+- Authorized doctor reads support `/api/v1/access-requests/{id}/records/page?limit=25&cursor=<uuid>` with bounded pages; original route rejects histories exceeding 100 instead of silently truncating them.
+- Docker no longer passes the complete `.env` file into all services: each hospital gets only its own DB credentials and signing secret, frontends get only public `VITE_*` values, and the Core gets its own DB + hospital token signing secrets.
+- CI includes a **real PostgreSQL owner-isolation check** (`pnpm db:verify-isolation`) for the 4 owner connections and 12 forbidden cross-database connections.
+- Better public Cardano metadata and complete Merkle manifest validation (operator tools only; **not a confirmed transaction**).
+- Source tests are rerun with Node experimental type-stripping; that is **not** the same as compiling the whole NestJS app with Prisma.
+
+### Missing infrastructure to complete the project
+
+`node scripts/qa/preflight.mjs` lists prerequisites. Production-grade work still requires verified Docker + 4 DB migrations, installed pnpm/NestJS/Prisma dependencies and successful full build, real browser OIDC E2E, Cardano Preprod signed and confirmed transactions, Midnight Ledger 9 compiled/deployed contract and real ZK verification, hospital integrations, security assessment, monitoring, backups and compliance sign-off.
+
+## v0.6 API documentation and release validation
+
+- [API documentation overview](docs/api/README.md)
+- [Canonical OpenAPI 3.1 JSON](docs/api/openapi.json) and [YAML](docs/api/openapi.yaml)
+- [Endpoint authorization matrix](docs/api/authorization-matrix.md)
+- [Copyable synthetic requests](docs/api/examples.md)
+- [Internal Hospital API](docs/api/hospital-internal.md)
+- [v0.6 release verification report](docs/testing/VERIFICATION_0.6.md)
+
+```bash
+node scripts/qa/verify-openapi.mjs
+node --experimental-strip-types --test tests/unit/*.test.mjs tests/integration/*.test.mjs
+node scripts/qa/syntax-check.cjs
+```
+
+`POST /api/v1/access-requests` accepts optional doctor-scoped `Idempotency-Key` for safe retries. The new `202611220010_access_request_idempotency` Core migration is required before deploying this release. Run the database migration from a private network and verify in PostgreSQL; the SQL has not been executed in this authoring environment. No pnpm lockfile has been generated because package registry access is unavailable; create and commit one from a compatible dependency-enabled machine before reproducible CI/production builds.

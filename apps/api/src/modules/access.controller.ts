@@ -1,5 +1,5 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query, Req, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Get, Headers, Param, ParseUUIDPipe, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiHeader, ApiTags } from '@nestjs/swagger';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { JwtGuard, AuthenticatedRequest } from '../security/jwt.guard';
 import { AccessService } from './access.service';
@@ -10,7 +10,9 @@ import { CreateAccessRequestDto } from './access.dto';
 export class AccessController {
  constructor(private readonly svc: AccessService) {}
  @Post('access-requests') @Throttle({default:{limit:10,ttl:60000}})
- create(@Req() req:AuthenticatedRequest, @Body() body:CreateAccessRequestDto) {return this.svc.create(req.principal,body);}
+ @ApiHeader({name:'Idempotency-Key',required:false,description:'Doctor-scoped retry key (8-128 chars); same key must use same payload'})
+ create(@Req() req:AuthenticatedRequest, @Body() body:CreateAccessRequestDto,
+   @Headers('idempotency-key') key?:string) {return this.svc.create(req.principal,body,key);}
  @Get('access-requests/mine') mine(@Req() req:AuthenticatedRequest) {return this.svc.mine(req.principal);}
  @Get('patients/me/access-requests') pending(@Req() req:AuthenticatedRequest) {return this.svc.pending(req.principal);}
  @Get('patients/me/timeline') timeline(@Req() req:AuthenticatedRequest) {return this.svc.timeline(req.principal);}

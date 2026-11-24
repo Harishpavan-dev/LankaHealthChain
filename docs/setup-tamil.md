@@ -9,7 +9,7 @@ Windows 10/11 என்றால் WSL2 (Ubuntu), Docker Desktop, Git, Node.js 
 ## Step 2 – Project open
 
 ```bash
-unzip LankaHealthChain-v0.4.0-source.zip
+unzip LankaHealthChain-v0.5.0-source.zip
 cd LankaHealthChain
 cp .env.example .env
 ```
@@ -244,3 +244,27 @@ bash contracts/midnight/scripts/compile.sh
 Compilation, wallet integration, ZK proof generation மற்றும் Preprod deployment
 இந்த coding environment-ல் செய்யப்படவில்லை. Testnet wallet secrets-ஐ chat/GitHub-ல்
 பகிர வேண்டாம்.
+
+
+---
+
+## v0.5.0 – கூடுதல் பாதுகாப்பு மற்றும் Database Checks
+
+Core-க்கு 9 SQL migration files, ஒவ்வொரு Hospital-க்கும் 2 SQL migration files உள்ளன. `pnpm db:migrate` மூன்று Hospital Databases-க்கும் தனித்தனி migration histories-ஐப் பயன்படுத்தும்.
+
+Full Docker stack தொடங்கிய பின் நான்கு database roles-ஐச் சோதிக்க:
+
+```bash
+docker compose --env-file .env \
+ -f infrastructure/docker/compose.yml \
+ -f infrastructure/docker/compose.app.yml \
+ run --rm --no-deps migrate-and-seed pnpm db:verify-isolation
+```
+
+Expected: 4 own connections PASS; 12 cross-hospital connections DENIED. Hospital APIs இப்போது மற்ற Hospital DB passwords-ஐ environment-ல் பெறாது. Frontend containers-க்கும் DB credentials கிடையாது.
+
+Patient Approval Request-க்கு **24 மணி நேர deadline** உள்ளது. Doctor Portal-ல் records அதிகமாக இருந்தால் **Load more records** மூலம் அடுத்த page பார்க்கலாம். இந்த features source-ல் சேர்க்கப்பட்டுள்ளன; உண்மையான Docker stack-ல் இன்னும் சோதிக்கப்படவில்லை.
+
+**Cardano Preprod**: wallet, Preprod test-ADA, node/signing access மற்றும் confirmed TX-ஐப் பதிவு செய்வது இன்னும் அவசியம்.
+
+**Midnight**: Compact compiler நிறுவி source contract compile, local proof server, wallet/client, deploy, verification ஆகியவை இன்னும் செய்யப்பட வேண்டும். Local-demo authorization ஒரு ZK proof அல்ல.
