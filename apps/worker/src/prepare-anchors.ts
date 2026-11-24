@@ -46,7 +46,7 @@ async function main(){
   let batches=0;
   try {
     // Drain all current events in bounded 100-record batches.
-    // A subsequent invocation safelyy picks up newly added events.
+    // A subsequent invocation safely picks up newly added events.
     while (batches<1000){
       const processed=await prepareBatch();
       if(processed===0)break;
