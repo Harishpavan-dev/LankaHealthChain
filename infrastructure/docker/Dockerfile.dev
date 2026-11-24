@@ -1,0 +1,12 @@
+# LOCAL DEMONSTRATION ONLY; intentionally uses dev servers, never expose to the Internet.
+FROM node:22-bookworm-slim
+WORKDIR /workspace
+ENV CI=true DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder HOSPITAL_DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
+RUN corepack enable && corepack prepare pnpm@10.18.0 --activate
+COPY . .
+RUN pnpm install --no-frozen-lockfile \
+ && pnpm --filter @lhc/shared build \
+ && pnpm --filter @lhc/database build \
+ && pnpm --filter @lhc/hospital-database build
+EXPOSE 3000
+CMD ["pnpm","--filter","@lhc/api","dev"]

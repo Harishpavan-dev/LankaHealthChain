@@ -1,13 +1,20 @@
 {
   "name": "@lhc/shared",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "exports": {
     "./crypto": "./dist/crypto.js",
     "./authorization": "./dist/authorization.js",
     "./fhir": "./dist/fhir.js",
-    "./internal-token": "./dist/internal-token.js"
+    "./internal-token": "./dist/internal-token.js",
+    "./replay": "./dist/replay.js",
+    "./merkle": "./dist/merkle.js",
+    "./cardano-verification": "./dist/cardano-verification.js",
+    "./consume-token": "./dist/consume-token.js",
+    "./hospital-endpoints": "./dist/hospital-endpoints.js",
+    "./bounded-json": "./dist/bounded-json.js",
+    "./pagination": "./dist/pagination.js"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
@@ -26,6 +33,27 @@
       ],
       "internal-token": [
         "dist/internal-token.d.ts"
+      ],
+      "replay": [
+        "dist/replay.d.ts"
+      ],
+      "merkle": [
+        "dist/merkle.d.ts"
+      ],
+      "cardano-verification": [
+        "dist/cardano-verification.d.ts"
+      ],
+      "consume-token": [
+        "dist/consume-token.d.ts"
+      ],
+      "hospital-endpoints": [
+        "dist/hospital-endpoints.d.ts"
+      ],
+      "bounded-json": [
+        "dist/bounded-json.d.ts"
+      ],
+      "pagination": [
+        "dist/pagination.d.ts"
       ]
     }
   }

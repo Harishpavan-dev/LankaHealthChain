@@ -2,6 +2,9 @@
 
 - CORE: `packages/database/prisma/migrations/202611220001_init/migration.sql`
 - CORE constraints: `packages/database/prisma/migrations/202611220002_constraints/migration.sql`
+- CORE patient mapping and integrity hardening: `202611220003_hardening/migration.sql`
+- CORE randomized commitment unique lookup: `202611220004_anchor_lookup/migration.sql`
+- CORE idempotent batch preparation: `202611220005_outbox_idempotency/migration.sql`
 - EACH hospital: `packages/hospital-database/prisma/migrations/202611220001_init/migration.sql`
 
 Migrations are committed versioned SQL, never schema auto-sync on deployment.

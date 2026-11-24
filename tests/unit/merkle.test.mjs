@@ -1,0 +1,10 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { makeMerkleBatch,verifyMerkleProof,cardanoAnchorMetadata } from '../../packages/shared/src/merkle.ts';
+const h = x => createHash('sha256').update(x).digest('hex');
+test('single leaf proof verifies',()=>{const a=makeMerkleBatch([h('a')]);assert.equal(a.proofs.length,1);assert.equal(verifyMerkleProof(a.proofs[0],a.root),true);});
+test('odd and even batches have verifiable inclusions',()=>{for(let n of [2,3,4,5,7,8,9,17]){const a=makeMerkleBatch(Array.from({length:n},(_,i)=>h(String(i)))); for(const p of a.proofs)assert.equal(verifyMerkleProof(p,a.root),true);}});
+test('order independent, rejects duplicates and malformed commitments',()=>{const a=Array.from({length:4},(_,i)=>h(`test${i}`));assert.equal(makeMerkleBatch(a).root,makeMerkleBatch([...a].reverse()).root);assert.throws(()=>makeMerkleBatch([a[0],a[0]]));assert.throws(()=>makeMerkleBatch(['patient-arun']));});
+test('tampered leaf, root and sibling fail',()=>{const a=makeMerkleBatch([h('a'),h('b'),h('c')]);const p=a.proofs[0];assert.equal(verifyMerkleProof({...p,commitment:h('not a')},a.root),false);assert.equal(verifyMerkleProof(p,h('bad')),false);assert.equal(verifyMerkleProof({...p,siblings:[{...p.siblings[0],hash:h('bad')},...p.siblings.slice(1)]},a.root),false);});
+test('metadata only contains public root and count',()=>{const a=makeMerkleBatch([h('a'),h('b')]);const m=cardanoAnchorMetadata(a.root,2)['1900'];assert.deepEqual(Object.keys(m).sort(),['alg','count','root','v']);assert.equal(m.root,a.root);});

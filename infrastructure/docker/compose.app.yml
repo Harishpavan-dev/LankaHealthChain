@@ -1,0 +1,114 @@
+# Combine with compose.yml; LOCAL DEV ONLY (Keycloak start-dev, Vite dev servers).
+# Example:
+# docker compose --env-file .env -f infrastructure/docker/compose.yml -f infrastructure/docker/compose.app.yml up -d --build
+x-dev-image: &dev-image
+  image: lhc-dev:local
+  build:
+    context: ../..
+    dockerfile: infrastructure/docker/Dockerfile.dev
+  env_file:
+    - ../../.env
+  restart: on-failure
+
+services:
+  migrate-and-seed:
+    <<: *dev-image
+    restart: 'no'
+    command: ["sh","-ec","pnpm db:migrate && pnpm db:seed"]
+    environment:
+      DATABASE_URL: postgresql://lhc_core:${LHC_CORE_DB_PASSWORD:?Set core DB password}@postgres:5432/lankahealthchain_core
+      HOSPITAL_NORTHERN_DATABASE_URL: postgresql://lhc_northern:${LHC_NORTHERN_DB_PASSWORD:?Set north DB password}@postgres:5432/hospital_northern
+      HOSPITAL_JAFFNA_DATABASE_URL: postgresql://lhc_jaffna:${LHC_JAFFNA_DB_PASSWORD:?Set jaffna DB password}@postgres:5432/hospital_jaffna
+      HOSPITAL_VENUS_DATABASE_URL: postgresql://lhc_venus:${LHC_VENUS_DB_PASSWORD:?Set venus DB password}@postgres:5432/hospital_venus
+      HOSPITAL_NORTHERN_URL: http://hospital-northern:4101
+      HOSPITAL_JAFFNA_URL: http://hospital-jaffna:4102
+      HOSPITAL_VENUS_URL: http://hospital-venus:4103
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    <<: *dev-image
+    command: ["pnpm","--filter","@lhc/api","dev"]
+    environment:
+      HOST: 0.0.0.0
+      DATABASE_URL: postgresql://lhc_core:${LHC_CORE_DB_PASSWORD:?Set core DB password}@postgres:5432/lankahealthchain_core
+      HOSPITAL_NORTHERN_URL: http://hospital-northern:4101
+      HOSPITAL_JAFFNA_URL: http://hospital-jaffna:4102
+      HOSPITAL_VENUS_URL: http://hospital-venus:4103
+      OIDC_JWKS_URL: http://keycloak:8080/realms/lankahealthchain/protocol/openid-connect/certs
+      OIDC_ISSUER: http://localhost:8080/realms/lankahealthchain
+      CONSENT_MODE: local-demo
+    ports:
+      - '127.0.0.1:3000:3000'
+    depends_on:
+      migrate-and-seed:
+        condition: service_completed_successfully
+
+  hospital-northern:
+    <<: *dev-image
+    command: ["pnpm","--filter","@lhc/hospital-simulator","dev"]
+    environment:
+      HOST: 0.0.0.0
+      HOSPITAL_CODE: northern
+      HOSPITAL_DATABASE_URL: postgresql://lhc_northern:${LHC_NORTHERN_DB_PASSWORD:?Set north DB password}@postgres:5432/hospital_northern
+      HOSPITAL_TOKEN_SECRET: ${HOSPITAL_NORTHERN_TOKEN_SECRET:?Secret required}
+    depends_on:
+      migrate-and-seed:
+        condition: service_completed_successfully
+
+  hospital-jaffna:
+    <<: *dev-image
+    command: ["pnpm","--filter","@lhc/hospital-simulator","dev"]
+    environment:
+      HOST: 0.0.0.0
+      HOSPITAL_CODE: jaffna
+      HOSPITAL_DATABASE_URL: postgresql://lhc_jaffna:${LHC_JAFFNA_DB_PASSWORD:?Set jaffna DB password}@postgres:5432/hospital_jaffna
+      HOSPITAL_TOKEN_SECRET: ${HOSPITAL_JAFFNA_TOKEN_SECRET:?Secret required}
+    depends_on:
+      migrate-and-seed:
+        condition: service_completed_successfully
+
+  hospital-venus:
+    <<: *dev-image
+    command: ["pnpm","--filter","@lhc/hospital-simulator","dev"]
+    environment:
+      HOST: 0.0.0.0
+      HOSPITAL_CODE: venus
+      HOSPITAL_DATABASE_URL: postgresql://lhc_venus:${LHC_VENUS_DB_PASSWORD:?Set venus DB password}@postgres:5432/hospital_venus
+      HOSPITAL_TOKEN_SECRET: ${HOSPITAL_VENUS_TOKEN_SECRET:?Secret required}
+    depends_on:
+      migrate-and-seed:
+        condition: service_completed_successfully
+
+  patient-portal:
+    <<: *dev-image
+    command: ["pnpm","--filter","@lhc/patient-portal","exec","vite","--host","0.0.0.0","--port","5173"]
+    ports: ['127.0.0.1:5173:5173']
+    depends_on: [api]
+
+  doctor-portal:
+    <<: *dev-image
+    command: ["pnpm","--filter","@lhc/doctor-portal","exec","vite","--host","0.0.0.0","--port","5174"]
+    ports: ['127.0.0.1:5174:5174']
+    depends_on: [api]
+
+  admin-portal:
+    <<: *dev-image
+    command: ["pnpm","--filter","@lhc/admin-portal","exec","vite","--host","0.0.0.0","--port","5175"]
+    ports: ['127.0.0.1:5175:5175']
+    depends_on: [api]
+
+  cardano-preparer:
+    <<: *dev-image
+    profiles: ['operator']
+    restart: 'no'
+    command: ["pnpm","anchors:prepare"]
+    environment:
+      DATABASE_URL: postgresql://lhc_core:${LHC_CORE_DB_PASSWORD:?Set core DB password}@postgres:5432/lankahealthchain_core
+      CARDANO_BATCH_DIR: /workspace/private/cardano-batches
+    volumes:
+      - ../../private/cardano-batches:/workspace/private/cardano-batches
+    depends_on:
+      migrate-and-seed:
+        condition: service_completed_successfully

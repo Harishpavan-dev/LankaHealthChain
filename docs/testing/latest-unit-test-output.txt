@@ -1,0 +1,270 @@
+TAP version 13
+# (node:6032) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: scoped active consent authorizes
+ok 1 - scoped active consent authorizes
+  ---
+  duration_ms: 1.207706
+  type: 'test'
+  ...
+# Subtest: consent blocks revoked
+ok 2 - consent blocks revoked
+  ---
+  duration_ms: 0.139379
+  type: 'test'
+  ...
+# Subtest: consent blocks status denied
+ok 3 - consent blocks status denied
+  ---
+  duration_ms: 0.104106
+  type: 'test'
+  ...
+# Subtest: consent blocks different doctor
+ok 4 - consent blocks different doctor
+  ---
+  duration_ms: 0.109284
+  type: 'test'
+  ...
+# Subtest: consent blocks different hospital
+ok 5 - consent blocks different hospital
+  ---
+  duration_ms: 0.114182
+  type: 'test'
+  ...
+# Subtest: consent blocks different patient
+ok 6 - consent blocks different patient
+  ---
+  duration_ms: 0.120651
+  type: 'test'
+  ...
+# Subtest: consent blocks wrong purpose
+ok 7 - consent blocks wrong purpose
+  ---
+  duration_ms: 0.100891
+  type: 'test'
+  ...
+# Subtest: consent blocks wrong type
+ok 8 - consent blocks wrong type
+  ---
+  duration_ms: 0.145369
+  type: 'test'
+  ...
+# Subtest: consent blocks expired
+ok 9 - consent blocks expired
+  ---
+  duration_ms: 0.405931
+  type: 'test'
+  ...
+# Subtest: expiry boundary is exclusive
+ok 10 - expiry boundary is exclusive
+  ---
+  duration_ms: 0.47216
+  type: 'test'
+  ...
+# Subtest: FHIR type allowlist rejects unexpected and repeated scopes
+ok 11 - FHIR type allowlist rejects unexpected and repeated scopes
+  ---
+  duration_ms: 0.269495
+  type: 'test'
+  ...
+# (node:6033) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: verifies matching Blockfrost metadata and Merkle inclusion proof
+ok 12 - verifies matching Blockfrost metadata and Merkle inclusion proof
+  ---
+  duration_ms: 1.076428
+  type: 'test'
+  ...
+# Subtest: rejects forged or altered Cardano metadata
+ok 13 - rejects forged or altered Cardano metadata
+  ---
+  duration_ms: 0.217046
+  type: 'test'
+  ...
+# Subtest: read-only preprod verifier calls exact known origin and validates response
+ok 14 - read-only preprod verifier calls exact known origin and validates response
+  ---
+  duration_ms: 2.473679
+  type: 'test'
+  ...
+# Subtest: invalid transaction hash and bad provider key rejected before network call
+ok 15 - invalid transaction hash and bad provider key rejected before network call
+  ---
+  duration_ms: 0.618961
+  type: 'test'
+  ...
+# (node:6034) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: canonical JSON stable under key ordering
+ok 16 - canonical JSON stable under key ordering
+  ---
+  duration_ms: 3.154373
+  type: 'test'
+  ...
+# Subtest: commitment detects report tampering and incorrect nonce
+ok 17 - commitment detects report tampering and incorrect nonce
+  ---
+  duration_ms: 1.197571
+  type: 'test'
+  ...
+# Subtest: reject invalid non-JSON and bad hash values
+ok 18 - reject invalid non-JSON and bad hash values
+  ---
+  duration_ms: 0.249916
+  type: 'test'
+  ...
+# (node:6065) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: each simulated hospital contains valid synthetic resource envelopes
+ok 19 - each simulated hospital contains valid synthetic resource envelopes
+  ---
+  duration_ms: 2.632077
+  type: 'test'
+  ...
+# (node:6066) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: valid FHIR envelope is accepted
+ok 20 - valid FHIR envelope is accepted
+  ---
+  duration_ms: 0.714475
+  type: 'test'
+  ...
+# Subtest: missing or malformed patient reference is rejected
+ok 21 - missing or malformed patient reference is rejected
+  ---
+  duration_ms: 0.28633
+  type: 'test'
+  ...
+# Subtest: missing resource identifier is rejected
+ok 22 - missing resource identifier is rejected
+  ---
+  duration_ms: 0.123035
+  type: 'test'
+  ...
+# (node:6078) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: FHIR envelope validates allowed resource types
+ok 23 - FHIR envelope validates allowed resource types
+  ---
+  duration_ms: 0.847173
+  type: 'test'
+  ...
+# Subtest: FHIR R4 Condition and AllergyIntolerance have no required `status` attribute
+ok 24 - FHIR R4 Condition and AllergyIntolerance have no required `status` attribute
+  ---
+  duration_ms: 0.245378
+  type: 'test'
+  ...
+# (node:6098) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: internal record token valid and scoped
+ok 25 - internal record token valid and scoped
+  ---
+  duration_ms: 1.907687
+  type: 'test'
+  ...
+# Subtest: token fails after expiry or with wrong secret or changed signature
+ok 26 - token fails after expiry or with wrong secret or changed signature
+  ---
+  duration_ms: 0.45869
+  type: 'test'
+  ...
+# Subtest: token rejects inadequate service secret
+ok 27 - token rejects inadequate service secret
+  ---
+  duration_ms: 0.13268
+  type: 'test'
+  ...
+# (node:6104) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: single leaf proof verifies
+ok 28 - single leaf proof verifies
+  ---
+  duration_ms: 2.591195
+  type: 'test'
+  ...
+# Subtest: odd and even batches have verifiable inclusions
+ok 29 - odd and even batches have verifiable inclusions
+  ---
+  duration_ms: 7.992174
+  type: 'test'
+  ...
+# Subtest: order independent, rejects duplicates and malformed commitments
+ok 30 - order independent, rejects duplicates and malformed commitments
+  ---
+  duration_ms: 0.740844
+  type: 'test'
+  ...
+# Subtest: tampered leaf, root and sibling fail
+ok 31 - tampered leaf, root and sibling fail
+  ---
+  duration_ms: 0.380632
+  type: 'test'
+  ...
+# Subtest: metadata only contains public root and count
+ok 32 - metadata only contains public root and count
+  ---
+  duration_ms: 1.044711
+  type: 'test'
+  ...
+# Subtest: every core Prisma model and scalar column appears in initial SQL migration
+ok 33 - every core Prisma model and scalar column appears in initial SQL migration
+  ---
+  duration_ms: 5.176412
+  type: 'test'
+  ...
+# Subtest: each hospital Prisma model and scalar column appears in initial SQL migration
+ok 34 - each hospital Prisma model and scalar column appears in initial SQL migration
+  ---
+  duration_ms: 0.265369
+  type: 'test'
+  ...
+# Subtest: separate core and hospital migration histories exist
+ok 35 - separate core and hospital migration histories exist
+  ---
+  duration_ms: 0.460432
+  type: 'test'
+  ...
+# (node:6131) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: exactly 100 synthetic patients and 500 synthetic FHIR resources
+ok 36 - exactly 100 synthetic patients and 500 synthetic FHIR resources
+  ---
+  duration_ms: 1.464822
+  type: 'test'
+  ...
+# Subtest: every record belongs to correct fake hospital-local patient
+ok 37 - every record belongs to correct fake hospital-local patient
+  ---
+  duration_ms: 1.042698
+  type: 'test'
+  ...
+# (node:6142) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: first scoped internal token use accepted, subsequent replay denied
+ok 38 - first scoped internal token use accepted, subsequent replay denied
+  ---
+  duration_ms: 0.968525
+  type: 'test'
+  ...
+# Subtest: expired token denied and stale entries are pruned
+ok 39 - expired token denied and stale entries are pruned
+  ---
+  duration_ms: 0.131438
+  type: 'test'
+  ...
+# Subtest: invalid token identifiers are rejected
+ok 40 - invalid token identifiers are rejected
+  ---
+  duration_ms: 0.095323
+  type: 'test'
+  ...
+1..40
+# tests 40
+# suites 0
+# pass 40
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 520.130333

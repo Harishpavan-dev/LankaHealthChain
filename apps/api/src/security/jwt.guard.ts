@@ -6,7 +6,7 @@ export interface Principal { sub: string; roles: string[]; }
 export type AuthenticatedRequest = Request & { principal: Principal };
 @Injectable()
 export class JwtGuard implements CanActivate {
- private jwks = createRemoteJWKSet(new URL(`${process.env.OIDC_ISSUER}/protocol/openid-connect/certs`));
+ private jwks = createRemoteJWKSet(new URL(process.env.OIDC_JWKS_URL || `${process.env.OIDC_ISSUER}/protocol/openid-connect/certs`));
  async canActivate(context: ExecutionContext): Promise<boolean> {
    const req = context.switchToHttp().getRequest<AuthenticatedRequest>();
    const authorization = req.headers.authorization;

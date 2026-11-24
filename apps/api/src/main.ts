@@ -3,6 +3,8 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { randomUUID } from 'node:crypto';
+import type { Request, Response, NextFunction } from 'express';
 
 async function main() {
   if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL not configured');
@@ -16,6 +18,13 @@ async function main() {
   }
   const app = await NestFactory.create(AppModule);
   app.enableShutdownHooks();
+  app.use((_req:Request,res:Response,next:NextFunction)=>{
+    res.setHeader('X-Request-ID',randomUUID());
+    res.setHeader('X-Content-Type-Options','nosniff');
+    res.setHeader('Referrer-Policy','no-referrer');
+    res.setHeader('Cache-Control','no-store');
+    next();
+  });
   app.setGlobalPrefix('api');
   app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
@@ -23,7 +32,8 @@ async function main() {
   app.enableCors({ origin: origins, methods: ['GET','POST','OPTIONS'], allowedHeaders: ['Authorization','Content-Type'], credentials: false });
   const spec = new DocumentBuilder().setTitle('LankaHealthChain API').setVersion('v1')
     .addBearerAuth().build();
-  SwaggerModule.setup('/api/docs', app, SwaggerModule.createDocument(app, spec));
-  await app.listen(Number(process.env.PORT || 3000), '127.0.0.1');
+  if (process.env.NODE_ENV !== 'production')
+    SwaggerModule.setup('/api/docs', app, SwaggerModule.createDocument(app, spec));
+  await app.listen(Number(process.env.PORT || 3000), process.env.HOST || '127.0.0.1');
 }
 main().catch(e => { console.error('Startup failed:', e.message); process.exitCode = 1; });
