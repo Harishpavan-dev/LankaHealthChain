@@ -1,0 +1,46 @@
+pragma language_version 0.28;
+import CompactStandardLibrary;
+
+// Prototype for Ledger 9 toolchain (Compact 0.36.1).
+// Public ledger holds ONLY pseudorandom grant keys and active/revoked state.
+// The off-chain backend binds each grant key to patient, practitioner, FHIR scope,
+// purpose and expiry, and checks all of them on EVERY record retrieval.
+// This is NOT an independently deployable medical authorization system yet.
+// This file requires compilation, tests, wallet integration and audit before
+// it is ever used as an authorization source; it is NOT deployed.
+export ledger activeGrants: Map<Bytes<32>, Boolean>;
+
+// Patient-held secret is private witness data and MUST NOT reside on server.
+witness patientSecret(): Bytes<32>;
+
+circuit grantKey(scopeCommitment: Bytes<32>): Bytes<32> {
+  const secret = patientSecret();
+  return persistentHash<Vector<4, Bytes<32>>>([
+    pad(32, "lhc:consent:v1"),
+    kernel.self().bytes,
+    secret,
+    scopeCommitment
+  ]);
+}
+
+export circuit grantConsent(scopeCommitment: Bytes<32>): [] {
+  const key = disclose(grantKey(scopeCommitment));
+  assert(!activeGrants.member(key) || !activeGrants.lookup(key), "Grant already active");
+  activeGrants.insert(key, true);
+}
+
+export circuit revokeConsent(scopeCommitment: Bytes<32>): [] {
+  const key = disclose(grantKey(scopeCommitment));
+  assert(activeGrants.member(key), "Consent grant does not exist");
+  assert(activeGrants.lookup(key), "Consent already revoked");
+  activeGrants.insert(key, false);
+}
+
+// Demonstrates proof of knowledge of the patient-held witness for a current
+// grant. Production requires live state/tx finality validation and binding to
+// a signed application request; do NOT rely on this circuit alone.
+export circuit verifyConsent(scopeCommitment: Bytes<32>): [] {
+  const key = disclose(grantKey(scopeCommitment));
+  assert(activeGrants.member(key), "Unknown consent");
+  assert(activeGrants.lookup(key), "Consent revoked");
+}

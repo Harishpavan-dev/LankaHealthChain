@@ -1,0 +1,140 @@
+# Combine with compose.yml; LOCAL DEV ONLY (Keycloak start-dev, Next.js dev server).
+# Example:
+# docker compose --env-file .env -f infrastructure/docker/compose.yml -f infrastructure/docker/compose.app.yml up -d --build
+x-dev-image: &dev-image
+  image: lhc-dev:local
+  build:
+    context: ../..
+    dockerfile: infrastructure/docker/Dockerfile.dev
+  restart: on-failure
+
+services:
+  migrate-and-seed:
+    <<: *dev-image
+    restart: 'no'
+    command: ["sh","-ec","pnpm db:migrate && pnpm db:seed"]
+    environment:
+      DATABASE_URL: postgresql://lhc_core:${LHC_CORE_DB_PASSWORD:?Set core DB password}@postgres:5432/lankahealthchain_core
+      HOSPITAL_NORTHERN_DATABASE_URL: postgresql://lhc_northern:${LHC_NORTHERN_DB_PASSWORD:?Set north DB password}@postgres:5432/hospital_northern
+      HOSPITAL_JAFFNA_DATABASE_URL: postgresql://lhc_jaffna:${LHC_JAFFNA_DB_PASSWORD:?Set jaffna DB password}@postgres:5432/hospital_jaffna
+      HOSPITAL_VENUS_DATABASE_URL: postgresql://lhc_venus:${LHC_VENUS_DB_PASSWORD:?Set venus DB password}@postgres:5432/hospital_venus
+      HOSPITAL_NORTHERN_URL: ${HOSPITAL_NORTHERN_INTERNAL_URL:?Set internal URL}
+      HOSPITAL_JAFFNA_URL: ${HOSPITAL_JAFFNA_INTERNAL_URL:?Set internal URL}
+      HOSPITAL_VENUS_URL: ${HOSPITAL_VENUS_INTERNAL_URL:?Set internal URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    <<: *dev-image
+    command: ["pnpm","--filter","@lhc/api","dev"]
+    environment:
+      HOST: 0.0.0.0
+      PORT: ${PORT:?Set Core API port}
+      CORS_ORIGINS: ${CORS_ORIGINS:?Set CORS allowlist}
+      DATABASE_URL: postgresql://lhc_core:${LHC_CORE_DB_PASSWORD:?Set core DB password}@postgres:5432/lankahealthchain_core
+      HOSPITAL_NORTHERN_URL: ${HOSPITAL_NORTHERN_INTERNAL_URL:?Set internal URL}
+      HOSPITAL_JAFFNA_URL: ${HOSPITAL_JAFFNA_INTERNAL_URL:?Set internal URL}
+      HOSPITAL_VENUS_URL: ${HOSPITAL_VENUS_INTERNAL_URL:?Set internal URL}
+      OIDC_JWKS_URL: ${OIDC_JWKS_INTERNAL_URL:?Set internal JWKS URL}
+      OIDC_ISSUER: ${OIDC_ISSUER:?Set OIDC issuer}
+      CONSENT_MODE: ${CONSENT_MODE:?Set explicit consent mode}
+      RESEARCH_MODE: ${RESEARCH_MODE:?Set explicit research mode}
+      NODE_ENV: ${NODE_ENV:?Set NODE_ENV}
+      OIDC_AUDIENCE: ${OIDC_AUDIENCE:-lhc-api}
+      BLOCKFROST_PREPROD_PROJECT_ID: ${BLOCKFROST_PREPROD_PROJECT_ID:-}
+      CARDANO_METADATA_API_BASE_URL: ${CARDANO_METADATA_API_BASE_URL:?Set provider metadata API URL}
+      WORKER_POLL_MS: ${WORKER_POLL_MS:-15000}
+      HOSPITAL_NORTHERN_TOKEN_SECRET: ${HOSPITAL_NORTHERN_TOKEN_SECRET:?Secret required}
+      HOSPITAL_JAFFNA_TOKEN_SECRET: ${HOSPITAL_JAFFNA_TOKEN_SECRET:?Secret required}
+      HOSPITAL_VENUS_TOKEN_SECRET: ${HOSPITAL_VENUS_TOKEN_SECRET:?Secret required}
+    ports:
+      - '127.0.0.1:${PORT:?Set Core API port}:${PORT:?Set Core API port}'
+    depends_on:
+      migrate-and-seed:
+        condition: service_completed_successfully
+
+  hospital-northern:
+    <<: *dev-image
+    command: ["pnpm","--filter","@lhc/hospital-simulator","dev"]
+    environment:
+      HOST: 0.0.0.0
+      PORT: ${HOSPITAL_NORTHERN_PORT:?Set hospital port}
+      HOSPITAL_CODE: northern
+      HOSPITAL_DATABASE_URL: postgresql://lhc_northern:${LHC_NORTHERN_DB_PASSWORD:?Set north DB password}@postgres:5432/hospital_northern
+      HOSPITAL_TOKEN_SECRET: ${HOSPITAL_NORTHERN_TOKEN_SECRET:?Secret required}
+    depends_on:
+      migrate-and-seed:
+        condition: service_completed_successfully
+
+  hospital-jaffna:
+    <<: *dev-image
+    command: ["pnpm","--filter","@lhc/hospital-simulator","dev"]
+    environment:
+      HOST: 0.0.0.0
+      PORT: ${HOSPITAL_JAFFNA_PORT:?Set hospital port}
+      HOSPITAL_CODE: jaffna
+      HOSPITAL_DATABASE_URL: postgresql://lhc_jaffna:${LHC_JAFFNA_DB_PASSWORD:?Set jaffna DB password}@postgres:5432/hospital_jaffna
+      HOSPITAL_TOKEN_SECRET: ${HOSPITAL_JAFFNA_TOKEN_SECRET:?Secret required}
+    depends_on:
+      migrate-and-seed:
+        condition: service_completed_successfully
+
+  hospital-venus:
+    <<: *dev-image
+    command: ["pnpm","--filter","@lhc/hospital-simulator","dev"]
+    environment:
+      HOST: 0.0.0.0
+      PORT: ${HOSPITAL_VENUS_PORT:?Set hospital port}
+      HOSPITAL_CODE: venus
+      HOSPITAL_DATABASE_URL: postgresql://lhc_venus:${LHC_VENUS_DB_PASSWORD:?Set venus DB password}@postgres:5432/hospital_venus
+      HOSPITAL_TOKEN_SECRET: ${HOSPITAL_VENUS_TOKEN_SECRET:?Secret required}
+    depends_on:
+      migrate-and-seed:
+        condition: service_completed_successfully
+
+  # Runs outbox preparation asynchronously; no blockchain signing keys or API
+  # credentials. Advisory DB locks serialize multiple replicas.
+  anchor-worker:
+    <<: *dev-image
+    restart: unless-stopped
+    stop_grace_period: 130s
+    command: ["pnpm", "--filter", "@lhc/worker", "start"]
+    environment:
+      DATABASE_URL: postgresql://lhc_core:${LHC_CORE_DB_PASSWORD:?Set core DB password}@postgres:5432/lankahealthchain_core
+      WORKER_POLL_MS: ${WORKER_POLL_MS:-15000}
+      CARDANO_BATCH_DIR: /workspace/private/cardano-batches
+    volumes:
+      - ../../private/cardano-batches:/workspace/private/cardano-batches
+    depends_on:
+      migrate-and-seed:
+        condition: service_completed_successfully
+
+  cardano-preparer:
+    <<: *dev-image
+    profiles: ['operator']
+    restart: 'no'
+    command: ["pnpm","anchors:prepare"]
+    environment:
+      DATABASE_URL: postgresql://lhc_core:${LHC_CORE_DB_PASSWORD:?Set core DB password}@postgres:5432/lankahealthchain_core
+      CARDANO_BATCH_DIR: /workspace/private/cardano-batches
+    volumes:
+      - ../../private/cardano-batches:/workspace/private/cardano-batches
+    depends_on:
+      migrate-and-seed:
+        condition: service_completed_successfully
+
+
+  frontend:
+    <<: *dev-image
+    command: ["pnpm", "--filter", "@lhc/frontend", "exec", "next", "dev", "--hostname", "0.0.0.0", "--port", "${NEXT_PORT:?Set frontend port}"]
+    environment:
+      NEXT_PUBLIC_OIDC_URL: ${NEXT_PUBLIC_OIDC_URL:?Set public OIDC URL}
+      NEXT_PUBLIC_OIDC_REALM: ${NEXT_PUBLIC_OIDC_REALM:?Set OIDC realm}
+      NEXT_PUBLIC_OIDC_CLIENT_ID: ${NEXT_PUBLIC_OIDC_CLIENT_ID:?Set OIDC public client ID}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?Set browser API URL}
+      NEXT_PUBLIC_DEMO_PATIENT_ID: ${NEXT_PUBLIC_DEMO_PATIENT_ID:-}
+      NODE_ENV: development
+    ports:
+      - '127.0.0.1:${NEXT_PORT:?Set frontend port}:${NEXT_PORT:?Set frontend port}'
+    depends_on: [api, keycloak]

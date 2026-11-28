@@ -1,0 +1,3344 @@
+openapi: 3.1.0
+info:
+  title: LankaHealthChain Demo API
+  version: 0.12.0
+  description: Synthetic-data-only interoperability prototype. Local consent is NOT Midnight ZK verification and local integrity
+    is NOT Cardano confirmation. Never connect real patient information. API error responses include X-Request-ID. Optional
+    doctor-scoped request idempotency. Pagination added for verified doctor requests and patient consents. v0.9.0 adds scoped
+    hospital operator management, de-identified security audit views and restricted synthetic research aggregates. NOT production
+    clinical authorization. v0.10.0 adds dedicated PostgreSQL-backed offline anchor worker monitoring, without blockchain
+    signing or PHI exposure. v0.11.0 moves deployment coordinates to validated environment config and randomizes synthetic
+    Keycloak demo credentials; no new clinical capability. v0.12.0 reorganizes repository folders into frontend/
+    and backend/ and adds English installation documentation; the API contract is unchanged.
+servers:
+- url: http://localhost:3000/api/v1
+  description: Loopback-only development demo
+tags:
+- name: Health
+  description: Health operations
+- name: Directory
+  description: Directory operations
+- name: Access
+  description: Access operations
+- name: Patient
+  description: Patient operations
+- name: Consent
+  description: Consent operations
+- name: Record exchange
+  description: Record exchange operations
+- name: Records
+  description: Records operations
+- name: Verification
+  description: Verification operations
+- name: Audit
+  description: Audit operations
+- name: Administration
+  description: Administration operations
+- name: Hospital administration
+  description: Hospital-scoped non-clinical institutional governance
+- name: Security audit
+  description: De-identified read-only audit views
+- name: Research
+  description: Approved synthetic aggregate research only
+security:
+- bearerAuth: []
+paths:
+  /health:
+    get:
+      tags:
+      - Health
+      operationId: getLiveness
+      summary: Process liveness
+      description: Process responding; database may still be unavailable.
+      x-required-role: public
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+        '503':
+          description: Dependency not ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security: []
+  /health/ready:
+    get:
+      tags:
+      - Health
+      operationId: getReadiness
+      summary: PostgreSQL readiness
+      description: Returns 503 if Core PostgreSQL query fails.
+      x-required-role: public
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Readiness'
+        '503':
+          description: Dependency not ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security: []
+  /hospitals:
+    get:
+      tags:
+      - Directory
+      operationId: listHospitals
+      summary: List active demo hospitals
+      description: No facility administrative secrets or clinical data.
+      x-required-role: authenticated
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Hospital'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Not authorized or out of scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: State or integrity conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '429':
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Dependency not ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - bearerAuth: []
+  /access-requests:
+    post:
+      tags:
+      - Access
+      operationId: createAccessRequest
+      summary: Create scoped access request
+      description: Patient approval deadline is 24h. This does not grant consent. Optional Idempotency-Key deduplicates retries
+        across API replicas; reuse with different body returns 409.
+      x-required-role: verified-doctor
+      responses:
+        '201':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessRequest'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Not authorized or out of scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: State or integrity conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '429':
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Dependency not ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccessRequestCreate'
+            example:
+              patientId: b1111111-1111-4111-8111-111111111111
+              purpose: treatment
+              requestedTypes:
+              - Observation
+              - MedicationRequest
+              requestedDurationMinutes: 60
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: false
+        schema:
+          type: string
+          minLength: 8
+          maxLength: 128
+          pattern: ^[A-Za-z0-9_-]+$
+        description: Opaque doctor-scoped retry key; same key + changed request returns 409. Concurrent retries share the
+          same request ID.
+  /access-requests/mine:
+    get:
+      tags:
+      - Access
+      operationId: listDoctorRequests
+      summary: List requesting doctor access requests
+      description: Most recent 100 requests; non-paginated compatibility route.
+      x-required-role: verified-doctor
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AccessRequest'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Not authorized or out of scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: State or integrity conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '429':
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Dependency not ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - bearerAuth: []
+  /access-requests/{id}/records:
+    get:
+      tags:
+      - Record exchange
+      operationId: getRequestRecords
+      summary: Retrieve authorized synthetic FHIR records
+      description: Fails if over 100 records; use paged endpoint. Rechecks consent before each release and after the full
+        batch.
+      x-required-role: verified-doctor + active scoped consent
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RecordAccess'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Not authorized or out of scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: State or integrity conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '429':
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Dependency not ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /access-requests/{id}/records/page:
+    get:
+      tags:
+      - Record exchange
+      operationId: getRequestRecordsPage
+      summary: Retrieve page of authorized FHIR records
+      description: Cursor is scoped to the request patient and requested resource types; no PHI in public chain.
+      x-required-role: verified-doctor + active scoped consent
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecordAccessPage'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Not authorized or out of scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: State or integrity conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '429':
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Dependency not ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 25
+        description: Maximum items per page
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+        description: Last id from previous page; must belong to the scoped patient
+  /patients/me/access-requests:
+    get:
+      tags:
+      - Patient
+      operationId: getPendingApprovals
+      summary: List pending, non-expired access requests
+      description: ''
+      x-required-role: patient
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AccessRequest'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Not authorized or out of scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: State or integrity conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '429':
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Dependency not ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - bearerAuth: []
+  /patients/me/timeline:
+    get:
+      tags:
+      - Patient
+      operationId: getTimeline
+      summary: List first 100 synthetic record references
+      description: ''
+      x-required-role: patient
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RecordIndex'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Not authorized or out of scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: State or integrity conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '429':
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Dependency not ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - bearerAuth: []
+  /patients/me/timeline/page:
+    get:
+      tags:
+      - Patient
+      operationId: getTimelinePage
+      summary: List cursor-paginated record references
+      description: ''
+      x-required-role: patient
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecordIndexPage'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Not authorized or out of scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: State or integrity conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '429':
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Dependency not ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 25
+        description: Maximum items per page
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+        description: Last id from previous page; must belong to the scoped patient
+  /patients/me/consents:
+    get:
+      tags:
+      - Consent
+      operationId: getMyConsents
+      summary: List patient scoped consents
+      description: ''
+      x-required-role: patient
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Consent'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Not authorized or out of scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: State or integrity conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '429':
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Dependency not ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - bearerAuth: []
+  /audit/me:
+    get:
+      tags:
+      - Audit
+      operationId: getMyAudit
+      summary: List recent access and consent audit entries
+      description: ''
+      x-required-role: patient
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AuditEvent'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Not authorized or out of scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: State or integrity conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '429':
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Dependency not ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - bearerAuth: []
+  /audit/me/page:
+    get:
+      tags:
+      - Audit
+      operationId: getMyAuditPage
+      summary: List cursor-paginated patient audit entries
+      description: ''
+      x-required-role: patient
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditEventPage'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Not authorized or out of scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: State or integrity conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '429':
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Dependency not ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 25
+        description: Maximum items per page
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+        description: Last id from previous page; must belong to the scoped patient
+  /access-requests/{id}/approve:
+    post:
+      tags:
+      - Consent
+      operationId: approveAccessRequest
+      summary: Approve synthetic local-demo request
+      description: LOCAL_DEMO_NOT_MIDNIGHT only; fails closed if consent mode is not local-demo. Not a ZK proof.
+      x-required-role: patient
+      responses:
+        '201':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Consent'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Not authorized or out of scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: State or integrity conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '429':
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Dependency not ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /access-requests/{id}/reject:
+    post:
+      tags:
+      - Consent
+      operationId: rejectAccessRequest
+      summary: Reject pending access request
+      description: ''
+      x-required-role: patient
+      responses:
+        '201':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Decision'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Not authorized or out of scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: State or integrity conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '429':
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Dependency not ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /consents/{id}/revoke:
+    post:
+      tags:
+      - Consent
+      operationId: revokeConsent
+      summary: Revoke future record accesses
+      description: Previously exported files cannot be remotely deleted.
+      x-required-role: patient
+      responses:
+        '201':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Decision'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Not authorized or out of scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: State or integrity conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '429':
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Dependency not ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /records:
+    post:
+      tags:
+      - Records
+      operationId: createSyntheticRecord
+      summary: Create a synthetic record at treating hospital
+      description: Caller-provided Patient links are discarded and replaced with hospital-local identity. No clinical payload
+        is persisted in Core. Retry with identical resource id/content only.
+      x-required-role: verified-doctor
+      responses:
+        '201':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecordCreated'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Not authorized or out of scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: State or integrity conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '429':
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Dependency not ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecordCreate'
+            example:
+              patientId: b1111111-1111-4111-8111-111111111111
+              resource:
+                resourceType: Observation
+                status: final
+                code:
+                  coding:
+                  - system: http://loinc.org
+                    code: 8480-6
+                valueQuantity:
+                  value: 120
+                  unit: mmHg
+                  system: http://unitsofmeasure.org
+                  code: mm[Hg]
+  /records/{id}/verification:
+    get:
+      tags:
+      - Verification
+      operationId: getRecordVerification
+      summary: Check commitment or confirmed Preprod anchor
+      description: onchainVerified=true only after Blockfrost Preprod metadata check. Otherwise local commitment or UNVERIFIED
+        status.
+      x-required-role: owner patient OR scoped verified doctor
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecordVerification'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Not authorized or out of scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: State or integrity conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '429':
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Dependency not ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /admin/summary:
+    get:
+      tags:
+      - Administration
+      operationId: getAdminSummary
+      summary: Read aggregate synthetic network counts
+      description: Returns no clinical resources.
+      x-required-role: network_admin
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminSummary'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Not authorized or out of scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: State or integrity conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '429':
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Dependency not ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - bearerAuth: []
+  /access-requests/mine/page:
+    get:
+      tags:
+      - Access
+      operationId: listDoctorRequestsPage
+      summary: List keyset-paginated doctor requests
+      description: Returns a doctor-scoped keyset page. Rejects foreign cursors; limit 1-100.
+      x-required-role: verified-doctor
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessRequestPage'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Not authorized or out of scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: State or integrity conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '429':
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Dependency not ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 25
+        description: Maximum items per page
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+        description: Last id from previous page; must belong to the authenticated doctor
+  /patients/me/consents/page:
+    get:
+      tags:
+      - Consent
+      operationId: getMyConsentsPage
+      summary: List keyset-paginated patient consents
+      description: Returns a patient-scoped keyset page. Rejects foreign cursors; limit 1-100.
+      x-required-role: patient
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsentPage'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Not authorized or out of scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: State or integrity conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '429':
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Dependency not ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 25
+        description: Maximum items per page
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+        description: Last id from previous page; must belong to the authenticated patient
+  /admin/dependencies:
+    get:
+      tags:
+      - Administration
+      operationId: getAdminDependencies
+      summary: Check source-hospital database readiness (admin only)
+      description: Runs a bounded, pinned request against each enrolled synthetic hospital readiness endpoint. No internal
+        URLs or medical data are exposed.
+      x-required-role: network_admin
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminDependencies'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Not authorized or out of scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: State or integrity conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '429':
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Dependency not ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - bearerAuth: []
+  /hospital-admin/hospitals:
+    get:
+      tags:
+      - Hospital administration
+      operationId: getAssignedHospitals
+      summary: List only assigned active hospitals
+      description: Synthetic-data governance. Strict server-side role and database scope validation.
+      x-required-role: hospital_admin
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HospitalAssignments'
+        '400':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /hospital-admin/hospitals/{code}/overview:
+    get:
+      tags:
+      - Hospital administration
+      operationId: getScopedHospitalOverview
+      summary: Hospital-scoped non-clinical operational totals
+      description: Synthetic-data governance. Strict server-side role and database scope validation.
+      x-required-role: hospital_admin
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HospitalOverview'
+        '400':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      parameters:
+      - name: code
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Assigned hospital code; membership checked against DB
+  /hospital-admin/hospitals/{code}/doctors/page:
+    get:
+      tags:
+      - Hospital administration
+      operationId: getScopedDoctorsPage
+      summary: Search clinicians assigned to own hospital
+      description: Synthetic-data governance. Strict server-side role and database scope validation.
+      x-required-role: hospital_admin
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HospitalDoctorPage'
+        '400':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      parameters:
+      - name: code
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Assigned hospital code; membership checked against DB
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+        description: Bounded result size
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+        description: Pagination cursor for the selected hospital and filters
+      - name: q
+        in: query
+        required: false
+        schema:
+          type: string
+          maxLength: 80
+        description: Case-insensitive display name search
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum: [active, inactive, unverified]
+        description: Active and inactive include verified clinicians. Unverified includes all clinicians awaiting verification.
+  /hospital-admin/hospitals/{code}/doctors/{id}:
+    patch:
+      tags:
+      - Hospital administration
+      operationId: updateScopedDoctorStatus
+      summary: Update the display name or access status of a clinician at the assigned hospital
+      description: Synthetic-data governance. Strict server-side role and database scope validation.
+      x-required-role: hospital_admin
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DoctorManagementRecord'
+        '400':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DoctorStatusUpdate'
+      parameters:
+      - name: code
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Assigned hospital code; membership checked against DB
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /hospital-admin/hospitals/{code}/audit/page:
+    get:
+      tags:
+      - Hospital administration
+      operationId: getHospitalAdminAuditPage
+      summary: Read non-clinical administrative changes for own hospital
+      description: Synthetic-data governance. Strict server-side role and database scope validation.
+      x-required-role: hospital_admin
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAuditPage'
+        '400':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      parameters:
+      - name: code
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Assigned hospital code; membership checked against DB
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+        description: Bounded result size
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+        description: Stable, scoped pagination cursor
+  /security-audit/summary:
+    get:
+      tags:
+      - Security audit
+      operationId: getSecurityAuditSummary
+      summary: Summarize audit event action outcomes
+      description: Synthetic-data governance. Strict server-side role and database scope validation.
+      x-required-role: security_auditor
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecurityAuditSummary'
+        '400':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /security-audit/events/page:
+    get:
+      tags:
+      - Security audit
+      operationId: getSecurityAuditEventsPage
+      summary: Read de-identified access audit events
+      description: Synthetic-data governance. Strict server-side role and database scope validation.
+      x-required-role: security_auditor
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RedactedAuditPage'
+        '400':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+        description: Bounded result size
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+        description: Stable, scoped pagination cursor
+  /security-audit/admin-events/page:
+    get:
+      tags:
+      - Security audit
+      operationId: getAdministrativeAuditEventsPage
+      summary: Read de-identified administrative audit events
+      description: Synthetic-data governance. Strict server-side role and database scope validation.
+      x-required-role: security_auditor
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAuditPage'
+        '400':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+        description: Bounded result size
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+        description: Stable, scoped pagination cursor
+  /research/me:
+    get:
+      tags:
+      - Research
+      operationId: getResearchAuthorization
+      summary: Retrieve approved synthetic research scope
+      description: Synthetic-data governance. Strict server-side role and database scope validation.
+      x-required-role: researcher
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResearchGrantDetails'
+        '400':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /research/aggregates:
+    get:
+      tags:
+      - Research
+      operationId: getResearchSyntheticAggregates
+      summary: View disclosure-controlled synthetic FHIR resource counts
+      description: Synthetic-data governance. Strict server-side role and database scope validation.
+      x-required-role: researcher
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResearchAggregates'
+        '400':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /admin/operators:
+    post:
+      tags:
+      - Administration
+      operationId: assignHospitalOperator
+      summary: Assign hospital operator to active institution
+      description: Synthetic-data governance. Strict server-side role and database scope validation.
+      x-required-role: network_admin
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperatorEnrollmentResult'
+        '400':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OperatorRequest'
+    get:
+      tags:
+      - Administration
+      operationId: listHospitalOperators
+      summary: View bounded hospital operator assignments
+      description: Synthetic-data governance. Strict server-side role and database scope validation.
+      x-required-role: network_admin
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperatorList'
+        '400':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /admin/operators/{id}/status:
+    patch:
+      tags:
+      - Administration
+      operationId: setHospitalOperatorStatus
+      summary: Activate or revoke hospital operator assignment
+      description: Synthetic-data governance. Strict server-side role and database scope validation.
+      x-required-role: network_admin
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResult'
+        '400':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActiveUpdate'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /admin/research-grants:
+    post:
+      tags:
+      - Administration
+      operationId: assignSyntheticResearchGrant
+      summary: Approve synthetic-only research project
+      description: Synthetic-data governance. Strict server-side role and database scope validation.
+      x-required-role: network_admin
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResearchGrantEnrollmentResult'
+        '400':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResearchGrantRequest'
+    get:
+      tags:
+      - Administration
+      operationId: listResearchGrants
+      summary: View bounded research grants
+      description: Synthetic-data governance. Strict server-side role and database scope validation.
+      x-required-role: network_admin
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResearchGrantList'
+        '400':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /admin/research-grants/{id}/status:
+    patch:
+      tags:
+      - Administration
+      operationId: setResearchGrantStatus
+      summary: Activate or revoke synthetic research access
+      description: Synthetic-data governance. Strict server-side role and database scope validation.
+      x-required-role: network_admin
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResult'
+        '400':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Error response (does not contain clinical data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActiveUpdate'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /hospital-admin/hospitals/{code}/doctors:
+    post:
+      tags:
+      - Hospital administration
+      operationId: enrollScopedDoctor
+      summary: Register an inactive, unverified clinician at own institution
+      description: Database-enrolled hospital administrator only; creates no Keycloak account and cannot activate doctor automatically.
+      x-required-role: hospital_admin
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: code
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DoctorEnrollment'
+      responses:
+        '201':
+          description: Clinician enrolled as inactive and unverified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DoctorManagementRecord'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Not a scoped hospital admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: Duplicate clinician subject
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /admin/worker-status:
+    get:
+      tags:
+      - Administration
+      operationId: getAdminWorkerStatus
+      summary: Read nonclinical background worker and outbox status
+      description: Requires network_admin; reports worker heartbeat, queued and dead-letter outbox counts and pending Cardano
+        batch preparation. No private keys, proof files, clinical records or hospital credentials are returned. Offline preparation
+        does not imply a Preprod transaction.
+      x-required-role: network_admin
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkerStatus'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Not authorized or out of scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: State or integrity conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '429':
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Dependency not ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Keycloak OIDC access token, audience lhc-api; role & patient/doctor scope verified by backend
+  schemas:
+    ApiError:
+      type: object
+      properties:
+        statusCode:
+          type: integer
+          minimum: 400
+          maximum: 599
+        code:
+          type: string
+        message:
+          oneOf:
+          - type: string
+          - type: array
+            items:
+              type: string
+        requestId:
+          type: string
+      additionalProperties: false
+      required:
+      - statusCode
+      - code
+      - message
+      - requestId
+    Health:
+      type: object
+      properties:
+        status:
+          type: string
+          const: ok
+        service:
+          type: string
+        version:
+          type: string
+        clinicalUse:
+          type: boolean
+      additionalProperties: false
+      required:
+      - status
+      - service
+      - version
+      - clinicalUse
+    Readiness:
+      type: object
+      properties:
+        status:
+          type: string
+          const: ready
+        service:
+          type: string
+        version:
+          type: string
+        clinicalUse:
+          type: boolean
+      additionalProperties: false
+      required:
+      - status
+      - service
+      - version
+      - clinicalUse
+    Hospital:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        name:
+          type: string
+      additionalProperties: false
+      required:
+      - id
+      - code
+      - name
+    DoctorSummary:
+      type: object
+      properties:
+        displayName:
+          type: string
+        hospital:
+          type: object
+          properties:
+            name:
+              type: string
+          additionalProperties: false
+          required:
+          - name
+      additionalProperties: false
+      required:
+      - displayName
+      - hospital
+    AccessRequestCreate:
+      type: object
+      properties:
+        patientId:
+          type: string
+          format: uuid
+        purpose:
+          type: string
+          enum:
+          - treatment
+          - follow-up
+        requestedTypes:
+          type: array
+          minItems: 1
+          maxItems: 5
+          uniqueItems: true
+          items:
+            type: string
+            enum:
+            - Observation
+            - DiagnosticReport
+            - MedicationRequest
+            - AllergyIntolerance
+            - Condition
+        requestedDurationMinutes:
+          type: integer
+          minimum: 1
+          maximum: 1440
+      additionalProperties: false
+      required:
+      - patientId
+      - purpose
+      - requestedTypes
+      - requestedDurationMinutes
+    AccessRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        patientId:
+          type: string
+          format: uuid
+        doctorId:
+          type: string
+          format: uuid
+        purpose:
+          type: string
+        status:
+          type: string
+          enum:
+          - PENDING
+          - APPROVED
+          - REJECTED
+          - REVOKED
+        requestedTypes:
+          type: array
+          items:
+            type: string
+        requestedDurationMinutes:
+          type: integer
+        decisionDeadlineAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        doctor:
+          $ref: '#/components/schemas/DoctorSummary'
+      additionalProperties: false
+      required:
+      - id
+      - patientId
+      - doctorId
+      - purpose
+      - status
+      - requestedTypes
+      - requestedDurationMinutes
+      - decisionDeadlineAt
+      - createdAt
+    Consent:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        requestId:
+          type: string
+          format: uuid
+        patientId:
+          type: string
+          format: uuid
+        doctorId:
+          type: string
+          format: uuid
+        hospitalId:
+          type: string
+          format: uuid
+        purpose:
+          type: string
+        allowedTypes:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - REVOKED
+        expiresAt:
+          type: string
+          format: date-time
+        revokedAt:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+        verificationMode:
+          type: string
+          const: LOCAL_DEMO_NOT_MIDNIGHT
+      additionalProperties: false
+      required:
+      - id
+      - requestId
+      - status
+      - expiresAt
+    Decision:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - REJECTED
+          - REVOKED
+        verificationMode:
+          type: string
+      additionalProperties: false
+      required:
+      - status
+    RecordIndex:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        resourceType:
+          type: string
+        recordVersion:
+          type: integer
+        anchorStatus:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        hospital:
+          type: object
+          properties:
+            name:
+              type: string
+          additionalProperties: false
+          required:
+          - name
+      additionalProperties: false
+      required:
+      - id
+      - resourceType
+      - recordVersion
+      - anchorStatus
+      - createdAt
+      - hospital
+    AuditEvent:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        patientId:
+          type: string
+          format: uuid
+        actorSub:
+          type: string
+        requestId:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+        action:
+          type: string
+        outcome:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+      required:
+      - id
+      - action
+      - outcome
+      - createdAt
+    FhirResource:
+      type: object
+      required:
+      - resourceType
+      properties:
+        resourceType:
+          type: string
+          enum:
+          - Observation
+          - DiagnosticReport
+          - MedicationRequest
+          - AllergyIntolerance
+          - Condition
+        id:
+          type: string
+      additionalProperties: true
+      description: Demonstration-only FHIR R4 subset, not full profile validation
+    RecordCreate:
+      type: object
+      properties:
+        patientId:
+          type: string
+          format: uuid
+        resource:
+          $ref: '#/components/schemas/FhirResource'
+      additionalProperties: false
+      required:
+      - patientId
+      - resource
+    RecordCreated:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        resourceType:
+          type: string
+        recordVersion:
+          type: integer
+        sourceHospital:
+          type: string
+        anchorStatus:
+          type: string
+        integrityVerification:
+          type: string
+      additionalProperties: false
+      required:
+      - id
+      - resourceType
+      - recordVersion
+      - sourceHospital
+      - anchorStatus
+      - integrityVerification
+    RecordAccess:
+      type: object
+      properties:
+        recordId:
+          type: string
+          format: uuid
+        sourceHospital:
+          type: string
+        resource:
+          $ref: '#/components/schemas/FhirResource'
+        integrity:
+          type: object
+          properties:
+            localHash:
+              type: string
+            cardano:
+              type: string
+          additionalProperties: false
+          required:
+          - localHash
+          - cardano
+        consentVerification:
+          type: string
+      additionalProperties: false
+      required:
+      - recordId
+      - sourceHospital
+      - resource
+      - integrity
+      - consentVerification
+    RecordVerification:
+      type: object
+      properties:
+        recordId:
+          type: string
+          format: uuid
+        integrity:
+          type: string
+        cardanoStatus:
+          type: string
+        onchainVerified:
+          type: boolean
+        reason:
+          type: string
+        txHash:
+          type: string
+      additionalProperties: false
+      required:
+      - recordId
+      - onchainVerified
+      - cardanoStatus
+    AdminSummary:
+      type: object
+      properties:
+        hospitals:
+          type: integer
+        verifiedDoctors:
+          type: integer
+        unverifiedDoctors:
+          type: integer
+        patients:
+          type: integer
+        recordReferences:
+          type: integer
+        pendingConsents:
+          type: integer
+        pendingAnchors:
+          type: integer
+        clinicalDataExposed:
+          type: boolean
+        consentMode:
+          type: string
+      additionalProperties: false
+      required:
+      - hospitals
+      - verifiedDoctors
+      - patients
+      - recordReferences
+      - pendingConsents
+      - pendingAnchors
+      - clinicalDataExposed
+      - consentMode
+    RecordIndexPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecordIndex'
+        nextCursor:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+      additionalProperties: false
+      required:
+      - items
+      - nextCursor
+    AuditEventPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditEvent'
+        nextCursor:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+      additionalProperties: false
+      required:
+      - items
+      - nextCursor
+    RecordAccessPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecordAccess'
+        nextCursor:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+      additionalProperties: false
+      required:
+      - items
+      - nextCursor
+    AccessRequestPage:
+      type: object
+      required:
+      - items
+      - nextCursor
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccessRequest'
+        nextCursor:
+          oneOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+    ConsentPage:
+      type: object
+      required:
+      - items
+      - nextCursor
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Consent'
+        nextCursor:
+          oneOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+    AdminDependencies:
+      type: object
+      required:
+      - status
+      - hospitals
+      - clinicalDataExposed
+      properties:
+        status:
+          type: string
+          enum:
+          - ready
+          - degraded
+        hospitals:
+          type: array
+          items:
+            type: object
+            required:
+            - code
+            - status
+            properties:
+              code:
+                type: string
+                enum:
+                - northern
+                - jaffna
+                - venus
+              status:
+                type: string
+                enum:
+                - ready
+                - disabled
+                - unavailable
+        clinicalDataExposed:
+          type: boolean
+          const: false
+    GovernanceHospital:
+      type: object
+      properties:
+        hospital:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            code:
+              type: string
+            name:
+              type: string
+          required:
+          - code
+          - name
+          - id
+    HospitalOverview:
+      type: object
+      properties:
+        hospital:
+          type: object
+        doctors:
+          type: integer
+        verifiedDoctors:
+          type: integer
+        localRecordReferences:
+          type: integer
+        pendingRequests:
+          type: integer
+        clinicalDataExposed:
+          const: false
+    DoctorStatusUpdate:
+      type: object
+      properties:
+        active:
+          type: boolean
+        verified:
+          type: boolean
+        displayName:
+          type: string
+          minLength: 3
+          maxLength: 120
+      minProperties: 1
+      additionalProperties: false
+    DoctorManagementRecord:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        verified:
+          type: boolean
+        active:
+          type: boolean
+      required:
+      - id
+      - displayName
+      - verified
+      - active
+    PageResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+        nextCursor:
+          type:
+          - string
+          - 'null'
+          format: uuid
+      required:
+      - items
+      - nextCursor
+    ResearchGrantRequest:
+      type: object
+      properties:
+        authSubject:
+          type: string
+          minLength: 5
+          maxLength: 128
+        projectName:
+          type: string
+          minLength: 5
+          maxLength: 120
+        purpose:
+          type: string
+          minLength: 10
+          maxLength: 500
+        expiresAt:
+          type: string
+          format: date-time
+      required:
+      - authSubject
+      - projectName
+      - purpose
+      - expiresAt
+    OperatorRequest:
+      type: object
+      properties:
+        authSubject:
+          type: string
+        hospitalCode:
+          type: string
+      required:
+      - authSubject
+      - hospitalCode
+    ActiveUpdate:
+      type: object
+      properties:
+        active:
+          type: boolean
+      required:
+      - active
+      additionalProperties: false
+    ResearchAggregates:
+      type: object
+      properties:
+        resourceCounts:
+          type: array
+          items:
+            type: object
+            properties:
+              resourceType:
+                type: string
+              count:
+                type: integer
+                minimum: 10
+        minimumCellSize:
+          const: 10
+        suppressedSmallCells:
+          const: true
+        mode:
+          const: SYNTHETIC_AGGREGATES_ONLY
+        clinicalDataExposed:
+          const: false
+    DoctorEnrollment:
+      type: object
+      properties:
+        authSubject:
+          type: string
+          minLength: 5
+          maxLength: 128
+        displayName:
+          type: string
+          minLength: 3
+          maxLength: 120
+      required:
+      - authSubject
+      - displayName
+      additionalProperties: false
+    HospitalAssignments:
+      type: array
+      items:
+        $ref: '#/components/schemas/GovernanceHospital'
+    HospitalDoctorPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DoctorManagementRecord'
+        nextCursor:
+          type:
+          - string
+          - 'null'
+      required:
+      - items
+      - nextCursor
+    SecurityAuditSummary:
+      type: object
+      properties:
+        access:
+          type: array
+          items:
+            type: object
+            properties:
+              action:
+                type: string
+              outcome:
+                type: string
+              count:
+                type: integer
+        administrative:
+          type: array
+          items:
+            type: object
+            properties:
+              action:
+                type: string
+              outcome:
+                type: string
+              count:
+                type: integer
+        clinicalDataExposed:
+          const: false
+        identifiersExposed:
+          const: false
+      required:
+      - access
+      - administrative
+      - clinicalDataExposed
+      - identifiersExposed
+    RedactedAuditEvent:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        action:
+          type: string
+        outcome:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+      - id
+      - action
+      - outcome
+      - createdAt
+      additionalProperties: false
+    RedactedAuditPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/RedactedAuditEvent'
+        nextCursor:
+          type:
+          - string
+          - 'null'
+      required:
+      - items
+      - nextCursor
+    AdminAuditEvent:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        action:
+          type: string
+        outcome:
+          type: string
+        targetKind:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+      - id
+      - action
+      - outcome
+      - targetKind
+      - createdAt
+      additionalProperties: false
+    AdminAuditPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminAuditEvent'
+        nextCursor:
+          type:
+          - string
+          - 'null'
+      required:
+      - items
+      - nextCursor
+    ResearchGrantDetails:
+      type: object
+      properties:
+        projectName:
+          type: string
+        purpose:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        mode:
+          const: SYNTHETIC_AGGREGATES_ONLY
+        clinicalDataExposed:
+          const: false
+      required:
+      - projectName
+      - purpose
+      - expiresAt
+      - mode
+    OperatorRecord:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        authSubject:
+          type: string
+        active:
+          type: boolean
+        hospital:
+          type: object
+          properties:
+            code:
+              type: string
+            name:
+              type: string
+    OperatorList:
+      type: array
+      items:
+        $ref: '#/components/schemas/OperatorRecord'
+    ResearchGrantRecord:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        authSubject:
+          type: string
+        projectName:
+          type: string
+        active:
+          type: boolean
+        expiresAt:
+          type: string
+          format: date-time
+    ResearchGrantList:
+      type: array
+      items:
+        $ref: '#/components/schemas/ResearchGrantRecord'
+    OperatorEnrollmentResult:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        hospitalCode:
+          type: string
+        active:
+          const: true
+        note:
+          type: string
+    StatusResult:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        active:
+          type: boolean
+    ResearchGrantEnrollmentResult:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectName:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        mode:
+          const: SYNTHETIC_DEMO
+    WorkerStatus:
+      type: object
+      additionalProperties: false
+      required:
+      - worker
+      - status
+      - queued
+      - deadLettered
+      - prepared
+      - totalPrepared
+      - onchainSubmission
+      - clinicalDataExposed
+      properties:
+        worker:
+          type: string
+          const: cardano-anchor-preparer
+        status:
+          type: string
+          enum:
+          - offline
+          - stale
+          - degraded
+          - healthy
+        queued:
+          type: integer
+          minimum: 0
+        deadLettered:
+          type: integer
+          minimum: 0
+        prepared:
+          type: integer
+          minimum: 0
+        lastSeenAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        lastSuccessAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        lastErrorCode:
+          type:
+          - string
+          - 'null'
+        totalPrepared:
+          type: integer
+          minimum: 0
+        onchainSubmission:
+          type: string
+          const: MANUAL_OPERATOR_REQUIRED
+        clinicalDataExposed:
+          type: boolean
+          const: false

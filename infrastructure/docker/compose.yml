@@ -11,12 +11,12 @@ services:
       LHC_VENUS_DB_PASSWORD: ${LHC_VENUS_DB_PASSWORD:?Set unique venus database password}
       POSTGRES_DB: postgres
     ports:
-      - '127.0.0.1:5432:5432'
+      - '127.0.0.1:${POSTGRES_HOST_PORT:?Set postgres host port}:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ../postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U bootstrap_admin -d postgres']
+      test: ['CMD', 'pg_isready', '-h', '127.0.0.1', '-U', 'bootstrap_admin', '-d', 'postgres']
       interval: 5s
       timeout: 3s
       retries: 15
@@ -28,9 +28,15 @@ services:
       KC_BOOTSTRAP_ADMIN_USERNAME: devadmin
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Set KEYCLOAK_ADMIN_PASSWORD in .env}
     ports:
-      - '127.0.0.1:8080:8080'
+      - '127.0.0.1:${KEYCLOAK_HOST_PORT:?Set Keycloak host port}:8080'
     volumes:
-      - ../keycloak/realm-config:/opt/keycloak/data/import:ro
+      - ../../private/keycloak-import:/opt/keycloak/data/import:ro
+
+  midnight-proof-server:
+    image: midnightntwrk/proof-server:9.0.2
+    profiles: ['midnight']
+    ports: ['127.0.0.1:${MIDNIGHT_PROOF_HOST_PORT:?Set prover host port}:6300']
+    restart: 'no'
 
 volumes:
   pgdata:
