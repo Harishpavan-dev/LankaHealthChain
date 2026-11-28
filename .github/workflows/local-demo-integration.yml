@@ -21,6 +21,30 @@ jobs:
           docker compose --env-file .env \
             -f infrastructure/docker/compose.yml \
             -f infrastructure/docker/compose.app.yml up --build -d
+      - name: Verify separate hospital PostgreSQL readiness endpoints
+        run: |
+          set -eu
+          set -a; . ./.env; set +a
+          for entry in "hospital-northern:$HOSPITAL_NORTHERN_PORT" "hospital-jaffna:$HOSPITAL_JAFFNA_PORT" "hospital-venus:$HOSPITAL_VENUS_PORT"; do
+            service="${entry%%:*}"
+            port="${entry##*:}"
+            ready=0
+            for attempt in $(seq 1 30); do
+              if docker compose --env-file .env \
+                -f infrastructure/docker/compose.yml \
+                -f infrastructure/docker/compose.app.yml \
+                exec -T "$service" node -e \
+                "fetch('http://127.0.0.1:$port/health/ready').then(async r => { if (!r.ok || (await r.json()).status !== 'ready') process.exit(1); }).catch(() => process.exit(1))"; then
+                ready=1
+                break
+              fi
+              sleep 2
+            done
+            if [ "$ready" -ne 1 ]; then
+              echo "Hospital readiness failed: $service" >&2
+              exit 1
+            fi
+          done
       - name: Verify independent database owners have no cross-database access
         run: |
           docker compose --env-file .env \
@@ -31,11 +55,21 @@ jobs:
       - name: Verify API readiness and Keycloak discovery
         env:
           LHC_HEALTH_ATTEMPTS: '60'
-        run: node scripts/qa/live-smoke.mjs
+        run: |
+          set -a; . ./.env; set +a
+          node scripts/qa/live-smoke.mjs
       - name: Execute actual synthetic consent + hospital HTTP journey
         env:
           LHC_ACCEPT_SYNTHETIC_WRITE: 'YES'
-        run: node scripts/qa/live-flow.mjs
+        run: |
+          set -a; . ./.env; set +a
+          node scripts/qa/live-flow.mjs
+      - name: Verify all new governance roles, DB tenant isolation, grant revocation and audit privacy
+        env:
+          LHC_ACCEPT_SYNTHETIC_WRITE: 'YES'
+        run: |
+          set -a; . ./.env; set +a
+          node scripts/qa/live-governance.mjs
       - name: Show container status without secrets on failure
         if: failure()
         run: |

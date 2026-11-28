@@ -64,3 +64,19 @@ curl --fail-with-body -X POST "$API/records" \
 ```
 
 `demo-synthetic-pressure-001` is a stable example FHIR id; if the same record already exists with differing content the server rejects the write. Always use fictional records only.
+
+## v0.7 – History pagination examples
+
+These requests require a validated Keycloak access token. Replace `<access-token>` with a synthetic development user token; never paste credentials or bearer tokens into public issue trackers.
+
+```bash
+# Verified doctor: one page of their own access requests
+curl -H 'Authorization: Bearer <access-token>' \
+  'http://localhost:3000/api/v1/access-requests/mine/page?limit=25'
+
+# Authenticated patient: one page of their own consent history
+curl -H 'Authorization: Bearer <access-token>' \
+  'http://localhost:3000/api/v1/patients/me/consents/page?limit=25'
+```
+
+The response uses `items` and `nextCursor`. If `nextCursor` is a UUID, provide it in a subsequent `cursor` query. If null, no further items are currently available. A cursor from another doctor/patient yields HTTP 400, not someone else's data.

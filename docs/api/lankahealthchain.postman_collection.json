@@ -1,0 +1,924 @@
+{
+  "info": {
+    "name": "LankaHealthChain · Synthetic Demo API v1",
+    "description": "Auto-generated from docs/api/openapi.json. Run only against your own local synthetic-data development environment. Never include real PHI or commit access tokens.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "patientId",
+      "value": "b1111111-1111-4111-8111-111111111111",
+      "type": "string"
+    },
+    {
+      "key": "requestId",
+      "value": "00000000-0000-4000-8000-000000000001",
+      "type": "string"
+    },
+    {
+      "key": "consentId",
+      "value": "00000000-0000-4000-8000-000000000002",
+      "type": "string"
+    },
+    {
+      "key": "recordId",
+      "value": "00000000-0000-4000-8000-000000000003",
+      "type": "string"
+    },
+    {
+      "key": "doctorId",
+      "value": "00000000-0000-4000-8000-000000000004",
+      "type": "string"
+    },
+    {
+      "key": "operatorId",
+      "value": "00000000-0000-4000-8000-000000000005",
+      "type": "string"
+    },
+    {
+      "key": "researchGrantId",
+      "value": "00000000-0000-4000-8000-000000000006",
+      "type": "string"
+    },
+    {
+      "key": "hospitalCode",
+      "value": "venus",
+      "type": "string"
+    },
+    {
+      "key": "staffSubject",
+      "value": "44444444-4444-4444-8444-444444444444",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "GET /health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "noauth"
+        },
+        "url": "{{baseUrl}}/api/v1/health",
+        "description": "Process liveness. Required role: public. Local synthetic-data demo only."
+      }
+    },
+    {
+      "name": "GET /health/ready",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "noauth"
+        },
+        "url": "{{baseUrl}}/api/v1/health/ready",
+        "description": "PostgreSQL readiness. Required role: public. Local synthetic-data demo only."
+      }
+    },
+    {
+      "name": "GET /hospitals",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}/api/v1/hospitals",
+        "description": "List active demo hospitals. Required role: authenticated. Local synthetic-data demo only."
+      }
+    },
+    {
+      "name": "POST /access-requests",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}/api/v1/access-requests",
+        "description": "Create scoped access request. Required role: verified-doctor. Local synthetic-data demo only.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"patientId\": \"{{patientId}}\",\n  \"purpose\": \"treatment\",\n  \"requestedTypes\": [\n    \"Observation\",\n    \"DiagnosticReport\"\n  ],\n  \"requestedDurationMinutes\": 60\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "GET /access-requests/mine",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}/api/v1/access-requests/mine",
+        "description": "List requesting doctor access requests. Required role: verified-doctor. Local synthetic-data demo only."
+      }
+    },
+    {
+      "name": "GET /access-requests/{id}/records",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}/api/v1/access-requests/{{requestId}}/records",
+        "description": "Retrieve authorized synthetic FHIR records. Required role: verified-doctor + active scoped consent. Local synthetic-data demo only."
+      }
+    },
+    {
+      "name": "GET /access-requests/{id}/records/page",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}/api/v1/access-requests/{{requestId}}/records/page?limit=25",
+        "description": "Retrieve page of authorized FHIR records. Required role: verified-doctor + active scoped consent. Local synthetic-data demo only."
+      }
+    },
+    {
+      "name": "GET /patients/me/access-requests",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}/api/v1/patients/me/access-requests",
+        "description": "List pending, non-expired access requests. Required role: patient. Local synthetic-data demo only."
+      }
+    },
+    {
+      "name": "GET /patients/me/timeline",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}/api/v1/patients/me/timeline",
+        "description": "List first 100 synthetic record references. Required role: patient. Local synthetic-data demo only."
+      }
+    },
+    {
+      "name": "GET /patients/me/timeline/page",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}/api/v1/patients/me/timeline/page?limit=25",
+        "description": "List cursor-paginated record references. Required role: patient. Local synthetic-data demo only."
+      }
+    },
+    {
+      "name": "GET /patients/me/consents",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}/api/v1/patients/me/consents",
+        "description": "List patient scoped consents. Required role: patient. Local synthetic-data demo only."
+      }
+    },
+    {
+      "name": "GET /audit/me",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}/api/v1/audit/me",
+        "description": "List recent access and consent audit entries. Required role: patient. Local synthetic-data demo only."
+      }
+    },
+    {
+      "name": "GET /audit/me/page",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}/api/v1/audit/me/page?limit=25",
+        "description": "List cursor-paginated patient audit entries. Required role: patient. Local synthetic-data demo only."
+      }
+    },
+    {
+      "name": "POST /access-requests/{id}/approve",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}/api/v1/access-requests/{{requestId}}/approve",
+        "description": "Approve synthetic local-demo request. Required role: patient. Local synthetic-data demo only."
+      }
+    },
+    {
+      "name": "POST /access-requests/{id}/reject",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}/api/v1/access-requests/{{requestId}}/reject",
+        "description": "Reject pending access request. Required role: patient. Local synthetic-data demo only."
+      }
+    },
+    {
+      "name": "POST /consents/{id}/revoke",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}/api/v1/consents/{{consentId}}/revoke",
+        "description": "Revoke future record accesses. Required role: patient. Local synthetic-data demo only."
+      }
+    },
+    {
+      "name": "POST /records",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}/api/v1/records",
+        "description": "Create a synthetic record at treating hospital. Required role: verified-doctor. Local synthetic-data demo only.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"patientId\": \"{{patientId}}\",\n  \"resource\": {\n    \"resourceType\": \"Observation\",\n    \"id\": \"postman-synthetic-001\",\n    \"status\": \"final\",\n    \"code\": {\n      \"coding\": [\n        {\n          \"system\": \"http://loinc.org\",\n          \"code\": \"8480-6\"\n        }\n      ]\n    },\n    \"valueQuantity\": {\n      \"value\": 120,\n      \"unit\": \"mmHg\",\n      \"system\": \"http://unitsofmeasure.org\",\n      \"code\": \"mm[Hg]\"\n    }\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "GET /records/{id}/verification",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}/api/v1/records/{{recordId}}/verification",
+        "description": "Check commitment or confirmed Preprod anchor. Required role: owner patient OR scoped verified doctor. Local synthetic-data demo only."
+      }
+    },
+    {
+      "name": "GET /admin/summary",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}/api/v1/admin/summary",
+        "description": "Read aggregate synthetic network counts. Required role: network_admin. Local synthetic-data demo only."
+      }
+    },
+    {
+      "name": "GET /access-requests/mine/page",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}/api/v1/access-requests/mine/page?limit=25",
+        "description": "List keyset-paginated doctor requests. Required role: verified-doctor. Local synthetic-data demo only."
+      }
+    },
+    {
+      "name": "GET /patients/me/consents/page",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}/api/v1/patients/me/consents/page?limit=25",
+        "description": "List keyset-paginated patient consents. Required role: patient. Local synthetic-data demo only."
+      }
+    },
+    {
+      "name": "GET /admin/dependencies",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}/api/v1/admin/dependencies",
+        "description": "Check source-hospital database readiness (admin only). Required role: network_admin. Local synthetic-data demo only."
+      }
+    },
+    {
+      "name": "GET /hospital-admin/hospitals",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}/api/v1/hospital-admin/hospitals",
+        "description": "List only assigned active hospitals. Required role: hospital_admin. Local synthetic-data demo only."
+      }
+    },
+    {
+      "name": "GET /hospital-admin/hospitals/{code}/overview",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}/api/v1/hospital-admin/hospitals/{{hospitalCode}}/overview",
+        "description": "Hospital-scoped non-clinical operational totals. Required role: hospital_admin. Local synthetic-data demo only."
+      }
+    },
+    {
+      "name": "GET /hospital-admin/hospitals/{code}/doctors/page",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}/api/v1/hospital-admin/hospitals/{{hospitalCode}}/doctors/page?limit=25",
+        "description": "List clinicians assigned to own hospital. Required role: hospital_admin. Local synthetic-data demo only."
+      }
+    },
+    {
+      "name": "PATCH /hospital-admin/hospitals/{code}/doctors/{id}",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}/api/v1/hospital-admin/hospitals/{{hospitalCode}}/doctors/{{doctorId}}",
+        "description": "Activate/deactivate and verify own hospital clinician. Required role: hospital_admin. Local synthetic-data demo only.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"verified\": true\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "GET /hospital-admin/hospitals/{code}/audit/page",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}/api/v1/hospital-admin/hospitals/{{hospitalCode}}/audit/page?limit=25",
+        "description": "Read non-clinical administrative changes for own hospital. Required role: hospital_admin. Local synthetic-data demo only."
+      }
+    },
+    {
+      "name": "GET /security-audit/summary",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}/api/v1/security-audit/summary",
+        "description": "Summarize audit event action outcomes. Required role: security_auditor. Local synthetic-data demo only."
+      }
+    },
+    {
+      "name": "GET /security-audit/events/page",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}/api/v1/security-audit/events/page?limit=25",
+        "description": "Read de-identified access audit events. Required role: security_auditor. Local synthetic-data demo only."
+      }
+    },
+    {
+      "name": "GET /security-audit/admin-events/page",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}/api/v1/security-audit/admin-events/page?limit=25",
+        "description": "Read de-identified administrative audit events. Required role: security_auditor. Local synthetic-data demo only."
+      }
+    },
+    {
+      "name": "GET /research/me",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}/api/v1/research/me",
+        "description": "Retrieve approved synthetic research scope. Required role: researcher. Local synthetic-data demo only."
+      }
+    },
+    {
+      "name": "GET /research/aggregates",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}/api/v1/research/aggregates",
+        "description": "View disclosure-controlled synthetic FHIR resource counts. Required role: researcher. Local synthetic-data demo only."
+      }
+    },
+    {
+      "name": "POST /admin/operators",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}/api/v1/admin/operators",
+        "description": "Assign hospital operator to active institution. Required role: network_admin. Local synthetic-data demo only.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"hospitalCode\": \"{{hospitalCode}}\",\n  \"authSubject\": \"{{staffSubject}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "GET /admin/operators",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}/api/v1/admin/operators",
+        "description": "View bounded hospital operator assignments. Required role: network_admin. Local synthetic-data demo only."
+      }
+    },
+    {
+      "name": "PATCH /admin/operators/{id}/status",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}/api/v1/admin/operators/{{operatorId}}/status",
+        "description": "Activate or revoke hospital operator assignment. Required role: network_admin. Local synthetic-data demo only.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"active\": false\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "POST /admin/research-grants",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}/api/v1/admin/research-grants",
+        "description": "Approve synthetic-only research project. Required role: network_admin. Local synthetic-data demo only.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"authSubject\": \"{{staffSubject}}\",\n  \"projectName\": \"Synthetic cohort demonstration\",\n  \"purpose\": \"Privacy-preserving anonymous aggregate review\",\n  \"expiresAt\": \"2027-01-01T00:00:00Z\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "GET /admin/research-grants",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}/api/v1/admin/research-grants",
+        "description": "View bounded research grants. Required role: network_admin. Local synthetic-data demo only."
+      }
+    },
+    {
+      "name": "PATCH /admin/research-grants/{id}/status",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}/api/v1/admin/research-grants/{{researchGrantId}}/status",
+        "description": "Activate or revoke synthetic research access. Required role: network_admin. Local synthetic-data demo only.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"active\": false\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "POST /hospital-admin/hospitals/{code}/doctors",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}/api/v1/hospital-admin/hospitals/{{hospitalCode}}/doctors",
+        "description": "Register an inactive, unverified clinician at own institution. Required role: hospital_admin. Local synthetic-data demo only.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"authSubject\": \"{{staffSubject}}\",\n  \"displayName\": \"Synthetic clinician\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "GET /admin/worker-status",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}/api/v1/admin/worker-status",
+        "description": "Read nonclinical background worker and outbox status. Required role: network_admin. Local synthetic-data demo only."
+      }
+    }
+  ]
+}

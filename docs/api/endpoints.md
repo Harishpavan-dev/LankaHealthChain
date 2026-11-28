@@ -20,6 +20,7 @@
 | GET | `/patients/me/timeline` | Patient | Pseudonymous index (no raw clinical payload) |
 | GET | `/audit/me` | Patient | Own access history |
 | GET | `/admin/summary` | Network admin | Aggregate counts only; no clinical payloads |
+| GET | `/admin/dependencies` | Network admin | Check readiness of the three isolated hospital APIs, with no internal URLs or clinical payloads |
 
 Demo `POST /records` body:
 
@@ -56,3 +57,28 @@ Pending consent requests become unapprovable **24 hours** after creation; use `d
 FHIR R4 `AllergyIntolerance` patient references use **`patient.reference`**, while `Observation`, `DiagnosticReport`, `MedicationRequest` and `Condition` use `subject.reference`. The API binds the hospital-local identity itself and does not trust caller-supplied patient references. New clinical records are subject to a **256 KiB serialized payload cap** and a minimal synthetic-content validator; this is not formal FHIR conformance.
 
 All access requests require a verified doctor and every read must match the patient, doctor, requesting hospital, purpose, record type, current consent, and fresh source-hospital commitment.
+
+
+## v0.9.0 Institutional governance API operations
+
+Full typed contracts, errors, security schemes and pagination parameters are maintained in [`openapi.yaml`](openapi.yaml).
+
+| Method | URL | Role / Scope |
+|---|---|---|
+| GET | `/hospital-admin/hospitals` | hospital_admin; active DB membership |
+| GET | `/hospital-admin/hospitals/{code}/overview` | assigned hospital only |
+| GET | `/hospital-admin/hospitals/{code}/doctors/page` | assigned hospital only |
+| POST | `/hospital-admin/hospitals/{code}/doctors` | assigned hospital; creates inactive/unverified clinician |
+| PATCH | `/hospital-admin/hospitals/{code}/doctors/{id}` | same hospital clinician; audit logged |
+| GET | `/hospital-admin/hospitals/{code}/audit/page` | own hospital, nonclinical events |
+| GET | `/security-audit/summary` | security_auditor; aggregate action/outcome |
+| GET | `/security-audit/events/page` | security_auditor; redacted access metadata |
+| GET | `/security-audit/admin-events/page` | security_auditor; redacted administration metadata |
+| GET | `/research/me` | researcher role + active DB grant + synthetic-only |
+| GET | `/research/aggregates` | researcher role + grant; groups >=10 only |
+| GET, POST | `/admin/operators` | network_admin; role enrollment is external to Keycloak |
+| PATCH | `/admin/operators/{id}/status` | network_admin; revoke/restore |
+| GET, POST | `/admin/research-grants` | network_admin; synthetic-only |
+| PATCH | `/admin/research-grants/{id}/status` | network_admin; revoke/restore |
+
+These routes do **not** provide clinical data to administrators, auditors or researchers.

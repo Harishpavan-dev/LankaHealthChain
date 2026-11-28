@@ -14,11 +14,15 @@ export class AccessController {
  create(@Req() req:AuthenticatedRequest, @Body() body:CreateAccessRequestDto,
    @Headers('idempotency-key') key?:string) {return this.svc.create(req.principal,body,key);}
  @Get('access-requests/mine') mine(@Req() req:AuthenticatedRequest) {return this.svc.mine(req.principal);}
+ @Get('access-requests/mine/page') minePage(@Req() req:AuthenticatedRequest,
+   @Query('limit') limit?:string,@Query('cursor') cursor?:string){return this.svc.minePage(req.principal,limit,cursor);}
  @Get('patients/me/access-requests') pending(@Req() req:AuthenticatedRequest) {return this.svc.pending(req.principal);}
  @Get('patients/me/timeline') timeline(@Req() req:AuthenticatedRequest) {return this.svc.timeline(req.principal);}
  @Get('patients/me/timeline/page') timelinePage(@Req() req:AuthenticatedRequest,
    @Query('limit') limit?:string,@Query('cursor') cursor?:string){return this.svc.timelinePage(req.principal,limit,cursor);}
  @Get('patients/me/consents') consents(@Req() req:AuthenticatedRequest) {return this.svc.myConsents(req.principal);}
+ @Get('patients/me/consents/page') consentsPage(@Req() req:AuthenticatedRequest,
+   @Query('limit') limit?:string,@Query('cursor') cursor?:string){return this.svc.myConsentsPage(req.principal,limit,cursor);}
  @Get('audit/me') audit(@Req() req:AuthenticatedRequest) {return this.svc.myAudit(req.principal);}
  @Get('audit/me/page') auditPage(@Req() req:AuthenticatedRequest,
    @Query('limit') limit?:string,@Query('cursor') cursor?:string){return this.svc.auditPage(req.principal,limit,cursor);}

@@ -3,10 +3,12 @@
  * No patient data or keys are sent, and it does not claim E2E verification.
  */
 import { setTimeout as delay } from 'node:timers/promises';
+const apiBase=process.env.VITE_API_URL||(()=>{throw Error('VITE_API_URL missing; source private .env')})();
+const keycloakBase=process.env.VITE_OIDC_URL||(()=>{throw Error('VITE_OIDC_URL missing; source private .env')})();
 const checks = [
-  ['Core API', process.env.LHC_API_HEALTH_URL || 'http://127.0.0.1:3000/api/v1/health'],
-  ['Core readiness', process.env.LHC_API_READY_URL || 'http://127.0.0.1:3000/api/v1/health/ready'],
-  ['Keycloak', process.env.LHC_KEYCLOAK_HEALTH_URL || 'http://127.0.0.1:8080/realms/lankahealthchain/.well-known/openid-configuration'],
+  ['Core API', process.env.LHC_API_HEALTH_URL || `${apiBase}/health`],
+  ['Core readiness', process.env.LHC_API_READY_URL || `${apiBase}/health/ready`],
+  ['Keycloak', process.env.LHC_KEYCLOAK_HEALTH_URL || `${keycloakBase}/realms/${process.env.VITE_OIDC_REALM||'lankahealthchain'}/.well-known/openid-configuration`],
 ];
 const tries = Math.min(60, Math.max(1, Number.parseInt(process.env.LHC_HEALTH_ATTEMPTS || '3',10) || 3));
 let failures = 0;

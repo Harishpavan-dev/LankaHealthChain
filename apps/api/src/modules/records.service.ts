@@ -7,6 +7,7 @@ import { CoreDbService } from '../database/db.service';
 import { AccessService } from './access.service';
 import { Principal } from '../security/jwt.guard';
 import { isConsentValid } from '@lhc/shared/authorization';
+import { isDoctorOperational } from '@lhc/shared/doctor-policy';
 import { verifyCommitment } from '@lhc/shared/crypto';
 import { issueRecordToken } from '@lhc/shared/internal-token';
 import { isSupportedFhirResource,fhirPatientReference } from '@lhc/shared/fhir';
@@ -94,8 +95,15 @@ export class RecordsService {
        consentVerification:'LOCAL_DEMO_NOT_MIDNIGHT'};
    });
    // Final gate after every asynchronous hospital response: do not emit a
-   // partially authorized batch if a consent was revoked mid-flight.
-   const finalConsent=await this.data.db.consent.findUnique({where:{id:request.consent.id}});
+   // partially authorized batch if a consent was revoked mid-flight OR if a
+   // network administrator has disabled the doctor or treating hospital.
+   const [finalDoctor,finalHospital,finalConsent]=await Promise.all([
+     this.data.db.doctor.findUnique({where:{id:doctor.id},select:{id:true,hospitalId:true,active:true,verified:true}}),
+     this.data.db.hospital.findUnique({where:{id:doctor.hospitalId},select:{id:true,active:true}}),
+     this.data.db.consent.findUnique({where:{id:request.consent.id}}),
+   ]);
+   if(!isDoctorOperational(finalDoctor,finalHospital))
+     throw new ForbiddenException('Doctor or hospital authorization was withdrawn during retrieval');
    if(records.some(r=>!isConsentValid(finalConsent,{patientId:request.patientId,
        doctorId:doctor.id,hospitalId:doctor.hospitalId,purpose:request.purpose,
        resourceType:r.resourceType,now:new Date()})) ||

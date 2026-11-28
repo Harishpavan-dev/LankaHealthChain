@@ -14,17 +14,17 @@ test('rejects forged or altered Cardano metadata',()=>{
 });
 test('read-only preprod verifier calls exact known origin and validates response',async()=>{
  const calls=[];const fake=async(url,init)=>{calls.push({url,init});return {ok:true,json:async()=>blockfrost};};
- const ok=await checkPreprodAnchor('a'.repeat(64),batch.proofs[1],'preprodtestkey123456789',batch.proofs[1].commitment,fake);
+ const ok=await checkPreprodAnchor('a'.repeat(64),batch.proofs[1],'preprodtestkey123456789',batch.proofs[1].commitment,fake,'https://cardano-preprod.blockfrost.io/api/v0');
  assert.equal(ok,true);assert.equal(calls[0].url,`https://cardano-preprod.blockfrost.io/api/v0/txs/${'a'.repeat(64)}/metadata`);
  assert.equal(calls[0].init.headers.project_id,'preprodtestkey123456789');
 });
 test('invalid transaction hash and bad provider key rejected before network call',async()=>{
- await assert.rejects(checkPreprodAnchor('../bad',batch.proofs[0],'preprodtestkey123456789',batch.proofs[0].commitment,()=>{throw Error('should not fetch')}));
- await assert.rejects(checkPreprodAnchor('a'.repeat(64),batch.proofs[0],'bad secret',batch.proofs[0].commitment,()=>{throw Error('should not fetch')}));
+ await assert.rejects(checkPreprodAnchor('../bad',batch.proofs[0],'preprodtestkey123456789',batch.proofs[0].commitment,()=>{throw Error('should not fetch')},'https://cardano-preprod.blockfrost.io/api/v0'));
+ await assert.rejects(checkPreprodAnchor('a'.repeat(64),batch.proofs[0],'bad secret',batch.proofs[0].commitment,()=>{throw Error('should not fetch')},'https://cardano-preprod.blockfrost.io/api/v0'));
 });
 
 test('valid proof for a different record cannot verify this patient record',async()=>{
- const before=await checkPreprodAnchor('a'.repeat(64),batch.proofs[1],'preprodtestkey123456789',batch.proofs[0].commitment,async()=>{throw Error('network must not be called')});
+ const before=await checkPreprodAnchor('a'.repeat(64),batch.proofs[1],'preprodtestkey123456789',batch.proofs[0].commitment,async()=>{throw Error('network must not be called')},'https://cardano-preprod.blockfrost.io/api/v0');
  assert.equal(before,false);
  assert.equal(verifyBlockfrostAnchor(blockfrost,batch.proofs[1],3,batch.proofs[0].commitment),false);
 });

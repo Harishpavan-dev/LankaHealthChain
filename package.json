@@ -1,6 +1,6 @@
 {
   "name": "lankahealthchain",
-  "version": "0.6.0",
+  "version": "0.11.0",
   "private": true,
   "packageManager": "pnpm@10.18.0",
   "engines": {
@@ -16,7 +16,7 @@
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
     "test": "node --experimental-strip-types --test tests/unit/*.test.mjs",
-    "test:all": "pnpm test && pnpm test:protocol && turbo test",
+    "test:all": "pnpm test && pnpm test:protocol && pnpm docs:check && turbo test",
     "db:generate": "pnpm --filter @lhc/database db:generate && pnpm --filter @lhc/hospital-database db:generate",
     "db:migrate": "pnpm --filter @lhc/database db:migrate && pnpm --filter @lhc/hospital-database db:migrate:all",
     "db:seed": "pnpm --filter @lhc/database db:seed && pnpm --filter @lhc/hospital-database db:seed:all",
@@ -30,7 +30,13 @@
     "preflight": "node scripts/qa/preflight.mjs",
     "test:live-flow": "node scripts/qa/live-flow.mjs",
     "db:verify-isolation": "pnpm --filter @lhc/database db:verify-isolation",
-    "docs:check": "node scripts/qa/verify-openapi.mjs"
+    "docs:check": "node scripts/qa/verify-openapi.mjs && node --experimental-strip-types --test tests/unit/postman-contract.test.mjs",
+    "docs:postman": "node scripts/qa/generate-postman.mjs",
+    "dev:hospital-admin": "pnpm --filter @lhc/hospital-admin-portal dev",
+    "dev:auditor": "pnpm --filter @lhc/security-auditor-portal dev",
+    "dev:researcher": "pnpm --filter @lhc/researcher-portal dev",
+    "test:live-governance": "node scripts/qa/live-governance.mjs",
+    "config:audit": "node scripts/qa/config-audit.mjs"
   },
   "devDependencies": {
     "typescript": "^5.9.0",

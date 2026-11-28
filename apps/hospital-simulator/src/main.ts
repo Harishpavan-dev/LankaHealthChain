@@ -1,16 +1,18 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
-import { Module, Controller, Get, Post, Body, Param, Query, Req, UnauthorizedException, ForbiddenException, NotFoundException, ConflictException, BadRequestException, Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Module, Controller, Get, Post, Body, Param, Query, Req, UnauthorizedException, ForbiddenException, NotFoundException, ConflictException, BadRequestException, ServiceUnavailableException, Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import type { Request, Response, NextFunction } from 'express';
 import { createPrismaClient } from '@lhc/hospital-database';
 import { verifyRecordToken } from '@lhc/shared/internal-token';
 import { isSupportedFhirResource,fhirPatientReference,validateDemoClinicalWrite } from '@lhc/shared/fhir';
 import { consumeServiceToken } from '@lhc/shared/consume-token';
 import { canonicalJson } from '@lhc/shared/crypto';
+import { parseListenPort, requiredConfig } from '@lhc/shared/runtime-config';
 
-const allowedCodes = { northern:4101, jaffna:4102, venus:4103 } as const;
-type HospitalCode = keyof typeof allowedCodes;
+// These codes identify synthetic institutions, not fixed deployment ports.
+const allowedCodes = ['northern', 'jaffna', 'venus'] as const;
+type HospitalCode = typeof allowedCodes[number];
 @Injectable()
 class HospitalDb implements OnModuleInit, OnModuleDestroy {
   readonly db = createPrismaClient(process.env.HOSPITAL_DATABASE_URL || '');
@@ -34,6 +36,11 @@ class HospitalDb implements OnModuleInit, OnModuleDestroy {
 class HospitalController {
  constructor(private readonly database:HospitalDb) {}
  @Get('health') health(){ return {status:'ok', hospital:process.env.HOSPITAL_CODE, clinicalUse:false}; }
+ @Get('health/ready') async ready(){
+   try {await this.database.db.$queryRaw`SELECT 1 AS ready`;}
+   catch {throw new ServiceUnavailableException('Hospital database not ready');}
+   return {status:'ready',hospital:process.env.HOSPITAL_CODE,clinicalUse:false};
+ }
  @Get('internal/v1/records/:externalId')
  async getRecord(@Req() req:Request,@Param('externalId') externalId:string,@Query('version') versionText:string){
    const bearer=req.headers.authorization;
@@ -92,9 +99,9 @@ class HospitalController {
 class HospitalModule{}
 async function bootstrap(){
  const code=process.env.HOSPITAL_CODE as HospitalCode;
- if (!Object.prototype.hasOwnProperty.call(allowedCodes,code)) throw new Error('Invalid HOSPITAL_CODE');
- if (!process.env.HOSPITAL_DATABASE_URL) throw new Error('HOSPITAL_DATABASE_URL is required');
- if ((process.env.HOSPITAL_TOKEN_SECRET||'').length<32) throw new Error('HOSPITAL_TOKEN_SECRET must have at least 32 characters');
+ if (!allowedCodes.includes(code)) throw new Error('Invalid HOSPITAL_CODE');
+ requiredConfig('HOSPITAL_DATABASE_URL');
+ if (Buffer.byteLength(requiredConfig('HOSPITAL_TOKEN_SECRET'),'utf8')<32) throw new Error('HOSPITAL_TOKEN_SECRET must have at least 32 characters');
  const app=await NestFactory.create<NestExpressApplication>(HospitalModule);
  app.useBodyParser('json',{limit:'300kb'});
  app.enableShutdownHooks();
@@ -103,6 +110,6 @@ async function bootstrap(){
    res.setHeader('X-Content-Type-Options','nosniff');
    next();
  });
- await app.listen(allowedCodes[code],process.env.HOST || '127.0.0.1');
+ await app.listen(parseListenPort(process.env.PORT),process.env.HOST || '127.0.0.1');
 }
 bootstrap().catch(e=>{console.error(e.message);process.exitCode=1;});

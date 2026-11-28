@@ -11,7 +11,8 @@ export function Shell({title,kicker,subtitle,children,role}:{title:string;kicker
 }
 export function Gate({ready,role,children}:{ready:boolean;role:string;children:React.ReactNode}){
  if(!ready)return <div className="card auth"><div className="brand"><div className="mark" aria-hidden="true">+</div>LankaHealthChain</div><h1>{role} Portal</h1><p className="muted">Privacy-first healthcare interoperability · Synthetic demo only</p><button className="btn" onClick={()=>auth.login()}>Sign in with Keycloak</button></div>;
- const expected:Record<string,string>={Patient:'patient',Doctor:'doctor','Network Admin':'network_admin'};
+ const expected:Record<string,string>={Patient:'patient',Doctor:'doctor','Network Admin':'network_admin',
+  'Hospital Admin':'hospital_admin','Security Auditor':'security_auditor',Researcher:'researcher'};
  const roles=(auth.tokenParsed as {realm_access?:{roles?:string[]}}|undefined)?.realm_access?.roles || [];
  if(expected[role] && !roles.includes(expected[role])) return <div className="card auth">
    <h1>Insufficient permissions</h1><p className="muted">This portal requires the {expected[role]} role.</p>

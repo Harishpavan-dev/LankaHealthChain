@@ -13,6 +13,15 @@
       },
       {
         "name": "network_admin"
+      },
+      {
+        "name": "hospital_admin"
+      },
+      {
+        "name": "security_auditor"
+      },
+      {
+        "name": "researcher"
       }
     ]
   },
@@ -23,16 +32,8 @@
       "publicClient": true,
       "protocol": "openid-connect",
       "standardFlowEnabled": true,
-      "redirectUris": [
-        "http://localhost:5173/*",
-        "http://localhost:5174/*",
-        "http://localhost:5175/*"
-      ],
-      "webOrigins": [
-        "http://localhost:5173",
-        "http://localhost:5174",
-        "http://localhost:5175"
-      ],
+      "redirectUris": [],
+      "webOrigins": [],
       "protocolMappers": [
         {
           "name": "lhc-api-audience",
@@ -86,7 +87,7 @@
       "credentials": [
         {
           "type": "password",
-          "value": "DemoPatient123!",
+          "value": "${LHC_DEMO_PATIENT_PASSWORD}",
           "temporary": false
         }
       ],
@@ -103,7 +104,7 @@
       "credentials": [
         {
           "type": "password",
-          "value": "DemoDoctor123!",
+          "value": "${LHC_DEMO_DOCTOR_PASSWORD}",
           "temporary": false
         }
       ],
@@ -120,12 +121,63 @@
       "credentials": [
         {
           "type": "password",
-          "value": "DemoAdmin123!",
+          "value": "${LHC_DEMO_ADMIN_PASSWORD}",
           "temporary": false
         }
       ],
       "realmRoles": [
         "network_admin"
+      ]
+    },
+    {
+      "id": "44444444-4444-4444-8444-444444444444",
+      "username": "hospital.venus",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "hospital.venus@example.invalid",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${LHC_DEMO_HOSPITAL_PASSWORD}",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "hospital_admin"
+      ]
+    },
+    {
+      "id": "55555555-5555-4555-8555-555555555555",
+      "username": "auditor.demo",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "auditor.demo@example.invalid",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${LHC_DEMO_AUDITOR_PASSWORD}",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "security_auditor"
+      ]
+    },
+    {
+      "id": "66666666-6666-4666-8666-666666666666",
+      "username": "researcher.demo",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "researcher.demo@example.invalid",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${LHC_DEMO_RESEARCHER_PASSWORD}",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "researcher"
       ]
     }
   ]
