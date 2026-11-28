@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import {mkdtempSync,readFileSync,writeFileSync,existsSync,rmSync,statSync} from 'node:fs';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
-import {makeMerkleBatch} from '../../packages/shared/src/merkle.ts';
-import {recoverAnchorManifest} from '../../packages/shared/src/anchor-recovery.ts';
-import {persistAnchorArtifacts} from '../../packages/shared/src/anchor-artifacts.ts';
+import {makeMerkleBatch} from '../../backend/packages/shared/src/merkle.ts';
+import {recoverAnchorManifest} from '../../backend/packages/shared/src/anchor-recovery.ts';
+import {persistAnchorArtifacts} from '../../backend/packages/shared/src/anchor-artifacts.ts';
 const c=i=>i.toString(16).padStart(64,'0');
 const fixture=()=>{
  const batch=makeMerkleBatch([c(3),c(1),c(4),c(2),c(5)]);
@@ -34,7 +34,8 @@ test('private batch artifact writes are deterministic, atomic and refuse tamperi
    assert.equal(first.records,5);
    assert.deepEqual(JSON.parse(readFileSync(join(first.destination,'private-inclusion-proofs.json'),'utf8')).proofs.map(p=>p.index),[0,1,2,3,4]);
    assert.deepEqual(JSON.parse(readFileSync(join(first.destination,'cardano-metadata.json'),'utf8'))['1900'].root,batch.root);
-   assert.equal(statSync(join(first.destination,'private-inclusion-proofs.json')).mode & 0o077,0);
+   // Windows reports ACL-backed files with synthetic POSIX mode bits.
+   if(process.platform!=='win32') assert.equal(statSync(join(first.destination,'private-inclusion-proofs.json')).mode & 0o077,0);
    assert.deepEqual(persistAnchorArtifacts(dir,batch.root,rows),first);
    const path=join(first.destination,'private-inclusion-proofs.json');
    writeFileSync(path,'{"tampered":true}\n');

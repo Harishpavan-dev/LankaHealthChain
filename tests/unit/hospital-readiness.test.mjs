@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {probeHospitalReadiness} from '../../packages/shared/src/hospital-readiness.ts';
+import {probeHospitalReadiness} from '../../backend/packages/shared/src/hospital-readiness.ts';
 const config={HOSPITAL_NORTHERN_URL:'http://hospital-northern:4101',NODE_ENV:'development'};
 const hospital={code:'northern',baseUrl:'http://hospital-northern:4101',active:true};
 const healthy=async url=>{

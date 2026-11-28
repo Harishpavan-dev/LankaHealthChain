@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {makeMerkleBatch,verifyMerkleProofWithCount,validateCompleteMerkleManifest,cardanoAnchorMetadata,validatePublicCardanoMetadata} from '../../packages/shared/src/merkle.ts';
-import {verifyBlockfrostAnchor} from '../../packages/shared/src/cardano-verification.ts';
+import {makeMerkleBatch,verifyMerkleProofWithCount,validateCompleteMerkleManifest,cardanoAnchorMetadata,validatePublicCardanoMetadata} from '../../backend/packages/shared/src/merkle.ts';
+import {verifyBlockfrostAnchor} from '../../backend/packages/shared/src/cardano-verification.ts';
 const dig=s=>createHash('sha256').update(s).digest('hex');
 for(const n of [1,2,3,4,5,7,8,9,100])test(`Merkle manifest covers exactly ${n} leaves`,()=>{
  const m=makeMerkleBatch(Array.from({length:n},(_,i)=>dig(`synthetic:${i}`)));

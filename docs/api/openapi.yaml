@@ -1,14 +1,15 @@
 openapi: 3.1.0
 info:
   title: LankaHealthChain Demo API
-  version: 0.11.0
+  version: 0.12.0
   description: Synthetic-data-only interoperability prototype. Local consent is NOT Midnight ZK verification and local integrity
     is NOT Cardano confirmation. Never connect real patient information. API error responses include X-Request-ID. Optional
     doctor-scoped request idempotency. Pagination added for verified doctor requests and patient consents. v0.9.0 adds scoped
     hospital operator management, de-identified security audit views and restricted synthetic research aggregates. NOT production
     clinical authorization. v0.10.0 adds dedicated PostgreSQL-backed offline anchor worker monitoring, without blockchain
     signing or PHI exposure. v0.11.0 moves deployment coordinates to validated environment config and randomizes synthetic
-    Keycloak demo credentials; no new clinical capability.
+    Keycloak demo credentials; no new clinical capability. v0.12.0 reorganizes repository folders into frontend/
+    and backend/ and adds English installation documentation; the API contract is unchanged.
 servers:
 - url: http://localhost:3000/api/v1
   description: Loopback-only development demo
@@ -1549,7 +1550,7 @@ paths:
       tags:
       - Hospital administration
       operationId: getScopedDoctorsPage
-      summary: List clinicians assigned to own hospital
+      summary: Search clinicians assigned to own hospital
       description: Synthetic-data governance. Strict server-side role and database scope validation.
       x-required-role: hospital_admin
       security:
@@ -1606,13 +1607,27 @@ paths:
         schema:
           type: string
           format: uuid
-        description: Stable, scoped pagination cursor
+        description: Pagination cursor for the selected hospital and filters
+      - name: q
+        in: query
+        required: false
+        schema:
+          type: string
+          maxLength: 80
+        description: Case-insensitive display name search
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum: [active, inactive, unverified]
+        description: Active and inactive include verified clinicians. Unverified includes all clinicians awaiting verification.
   /hospital-admin/hospitals/{code}/doctors/{id}:
     patch:
       tags:
       - Hospital administration
       operationId: updateScopedDoctorStatus
-      summary: Activate/deactivate and verify own hospital clinician
+      summary: Update the display name or access status of a clinician at the assigned hospital
       description: Synthetic-data governance. Strict server-side role and database scope validation.
       x-required-role: hospital_admin
       security:
@@ -2766,6 +2781,8 @@ components:
           type: integer
         verifiedDoctors:
           type: integer
+        unverifiedDoctors:
+          type: integer
         patients:
           type: integer
         recordReferences:
@@ -2942,6 +2959,10 @@ components:
           type: boolean
         verified:
           type: boolean
+        displayName:
+          type: string
+          minLength: 3
+          maxLength: 120
       minProperties: 1
       additionalProperties: false
     DoctorManagementRecord:

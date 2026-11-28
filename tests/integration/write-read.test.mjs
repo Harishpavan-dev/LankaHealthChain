@@ -4,10 +4,10 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createServer} from 'node:http';
-import {issueRecordToken,verifyRecordToken} from '../../packages/shared/src/internal-token.ts';
-import {ReplayGuard} from '../../packages/shared/src/replay.ts';
-import {canonicalJson,createCommitment,verifyCommitment} from '../../packages/shared/src/crypto.ts';
-import {isSupportedFhirResource} from '../../packages/shared/src/fhir.ts';
+import {issueRecordToken,verifyRecordToken} from '../../backend/packages/shared/src/internal-token.ts';
+import {ReplayGuard} from '../../backend/packages/shared/src/replay.ts';
+import {canonicalJson,createCommitment,verifyCommitment} from '../../backend/packages/shared/src/crypto.ts';
+import {isSupportedFhirResource} from '../../backend/packages/shared/src/fhir.ts';
 const secret='Synthetic-Hospital-Scoped-Test-Secret-Only-0123456789abcdef';
 function createHospital(){
  const records=new Map();const replay=new ReplayGuard();

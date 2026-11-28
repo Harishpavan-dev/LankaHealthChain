@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import {consumeServiceToken} from '../../packages/shared/src/consume-token.ts';
+import {consumeServiceToken} from '../../backend/packages/shared/src/consume-token.ts';
 function ledger(){
  const accepted = new Set();
  return {usedServiceToken:{async create({data}){

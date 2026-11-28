@@ -19,3 +19,8 @@ coverage/
 **/private-inclusion-proofs.json
 **/*.skey
 **/*.seed
+
+# Next.js build outputs
+.next/
+/frontend/next-env.d.ts
+*.tsbuildinfo

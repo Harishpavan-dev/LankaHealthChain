@@ -3,12 +3,13 @@
  * No patient data or keys are sent, and it does not claim E2E verification.
  */
 import { setTimeout as delay } from 'node:timers/promises';
-const apiBase=process.env.VITE_API_URL||(()=>{throw Error('VITE_API_URL missing; source private .env')})();
-const keycloakBase=process.env.VITE_OIDC_URL||(()=>{throw Error('VITE_OIDC_URL missing; source private .env')})();
+const apiBase=process.env.NEXT_PUBLIC_API_URL||(()=>{throw Error('NEXT_PUBLIC_API_URL missing; source private .env')})();
+const keycloakBase=process.env.NEXT_PUBLIC_OIDC_URL||(()=>{throw Error('NEXT_PUBLIC_OIDC_URL missing; source private .env')})();
 const checks = [
+  ['Next.js homepage', process.env.WEB_BASE_URL || (()=>{throw Error('WEB_BASE_URL missing')})()],
   ['Core API', process.env.LHC_API_HEALTH_URL || `${apiBase}/health`],
   ['Core readiness', process.env.LHC_API_READY_URL || `${apiBase}/health/ready`],
-  ['Keycloak', process.env.LHC_KEYCLOAK_HEALTH_URL || `${keycloakBase}/realms/${process.env.VITE_OIDC_REALM||'lankahealthchain'}/.well-known/openid-configuration`],
+  ['Keycloak', process.env.LHC_KEYCLOAK_HEALTH_URL || `${keycloakBase}/realms/${process.env.NEXT_PUBLIC_OIDC_REALM||'lankahealthchain'}/.well-known/openid-configuration`],
 ];
 const tries = Math.min(60, Math.max(1, Number.parseInt(process.env.LHC_HEALTH_ATTEMPTS || '3',10) || 3));
 let failures = 0;
@@ -21,6 +22,11 @@ for (const [label, endpoint] of checks) {
     try {
       const response = await fetch(url, { redirect: 'error', signal: AbortSignal.timeout(3000) });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      if(label === 'Next.js homepage'){
+        const html=await response.text();
+        if(!html.includes('LankaHealthChain') || !html.includes('Connected healthcare')) throw new Error('Next.js landing page not ready');
+        ok=true; break;
+      }
       const payload = await response.json();
       if (!payload || typeof payload !== 'object') throw new Error('Unexpected JSON');
       if (label === 'Core API' && payload.status !== 'ok') throw new Error('API status not ok');
@@ -33,5 +39,5 @@ for (const [label, endpoint] of checks) {
   console.log(`${ok ? 'PASS' : 'FAIL'} ${label}: ${url.origin}${url.pathname}${ok ? '' : ` — ${reason}`}`);
   if (!ok) failures++;
 }
-console.log('Health checks only. This does NOT validate migrations, user login, consent flow, or blockchain.');
+console.log('HTTP health and Next.js landing checks only. This does NOT validate login, consent, records, or blockchain.');
 if (failures) process.exitCode = 1;

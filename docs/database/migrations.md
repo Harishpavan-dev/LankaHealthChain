@@ -1,4 +1,4 @@
-# Database migrations — v0.11.0
+# Database migrations
 
 This is a **synthetic-only four-database demonstration**. All schema changes are versioned forward-only SQL. We have **15 Core migrations** and **3 reusable Hospital migrations**, run against each hospital database independently. Each database has its own `_prisma_migrations` history; do not combine them or give the Core API direct SQL access to hospital stores.
 
@@ -36,7 +36,7 @@ This is a **synthetic-only four-database demonstration**. All schema changes are
 set -a; . ./.env; set +a
 corepack enable
 corepack prepare pnpm@10.18.0 --activate
-pnpm install
+pnpm install --frozen-lockfile
 pnpm db:generate
 pnpm db:migrate
 pnpm db:seed
@@ -45,4 +45,4 @@ pnpm db:verify-isolation
 
 Or use the Docker Compose `migrate-and-seed` initialization job. The four DB owners and bootstrap admin must remain isolated. Verify all four histories and run live-stack E2E before claiming DB completion. Do not use `prisma db push` to bypass migrations, rewrite already-applied migration files, or delete existing PostgreSQL volumes without a backup.
 
-**Verification status:** Migration source structure was statically checked, but `prisma migrate deploy` on real PostgreSQL has **not been run in this authoring environment**. Performance and schema drift need live checks. In production, perform staged expand/contract migrations and independent database backups.
+All 15 core migrations and three migrations per hospital applied to fresh PostgreSQL databases in the isolated Docker stack. `pnpm db:verify-isolation` confirmed four owner connections and 12 cross-database denials. [Release verification](../testing/RELEASE_VERIFICATION_0.13.md)

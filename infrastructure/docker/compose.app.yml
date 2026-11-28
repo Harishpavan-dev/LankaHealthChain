@@ -1,4 +1,4 @@
-# Combine with compose.yml; LOCAL DEV ONLY (Keycloak start-dev, Vite dev servers).
+# Combine with compose.yml; LOCAL DEV ONLY (Keycloak start-dev, Next.js dev server).
 # Example:
 # docker compose --env-file .env -f infrastructure/docker/compose.yml -f infrastructure/docker/compose.app.yml up -d --build
 x-dev-image: &dev-image
@@ -110,39 +110,6 @@ services:
       migrate-and-seed:
         condition: service_completed_successfully
 
-  patient-portal:
-    <<: *dev-image
-    command: ["pnpm","--filter","@lhc/patient-portal","exec","vite","--host","0.0.0.0","--port","${PATIENT_PORT:?Set portal port}"]
-    environment:
-      VITE_OIDC_URL: ${VITE_OIDC_URL:?Set public OIDC URL}
-      VITE_OIDC_REALM: ${VITE_OIDC_REALM:?Set realm}
-      VITE_OIDC_CLIENT_ID: ${VITE_OIDC_CLIENT_ID:?Set OIDC public client ID}
-      VITE_API_URL: ${VITE_API_URL:?Set public API URL}
-    ports: ['127.0.0.1:${PATIENT_PORT:?Set portal port}:${PATIENT_PORT:?Set portal port}']
-    depends_on: [api]
-
-  doctor-portal:
-    <<: *dev-image
-    command: ["pnpm","--filter","@lhc/doctor-portal","exec","vite","--host","0.0.0.0","--port","${DOCTOR_PORT:?Set portal port}"]
-    environment:
-      VITE_OIDC_URL: ${VITE_OIDC_URL:?Set public OIDC URL}
-      VITE_OIDC_REALM: ${VITE_OIDC_REALM:?Set realm}
-      VITE_OIDC_CLIENT_ID: ${VITE_OIDC_CLIENT_ID:?Set OIDC public client ID}
-      VITE_API_URL: ${VITE_API_URL:?Set public API URL}
-    ports: ['127.0.0.1:${DOCTOR_PORT:?Set portal port}:${DOCTOR_PORT:?Set portal port}']
-    depends_on: [api]
-
-  admin-portal:
-    <<: *dev-image
-    command: ["pnpm","--filter","@lhc/admin-portal","exec","vite","--host","0.0.0.0","--port","${ADMIN_PORT:?Set portal port}"]
-    environment:
-      VITE_OIDC_URL: ${VITE_OIDC_URL:?Set public OIDC URL}
-      VITE_OIDC_REALM: ${VITE_OIDC_REALM:?Set realm}
-      VITE_OIDC_CLIENT_ID: ${VITE_OIDC_CLIENT_ID:?Set OIDC public client ID}
-      VITE_API_URL: ${VITE_API_URL:?Set public API URL}
-    ports: ['127.0.0.1:${ADMIN_PORT:?Set portal port}:${ADMIN_PORT:?Set portal port}']
-    depends_on: [api]
-
   cardano-preparer:
     <<: *dev-image
     profiles: ['operator']
@@ -158,35 +125,16 @@ services:
         condition: service_completed_successfully
 
 
-  hospital-admin-portal:
+  frontend:
     <<: *dev-image
-    command: ["pnpm","--filter","@lhc/hospital-admin-portal","exec","vite","--host","0.0.0.0","--port","${HOSPITAL_ADMIN_PORT:?Set portal port}"]
+    command: ["pnpm", "--filter", "@lhc/frontend", "exec", "next", "dev", "--hostname", "0.0.0.0", "--port", "${NEXT_PORT:?Set frontend port}"]
     environment:
-      VITE_OIDC_URL: ${VITE_OIDC_URL:?Set public OIDC URL}
-      VITE_OIDC_REALM: ${VITE_OIDC_REALM:?Set realm}
-      VITE_OIDC_CLIENT_ID: ${VITE_OIDC_CLIENT_ID:?Set OIDC public client ID}
-      VITE_API_URL: ${VITE_API_URL:?Set public API URL}
-    ports: ['127.0.0.1:${HOSPITAL_ADMIN_PORT:?Set portal port}:${HOSPITAL_ADMIN_PORT:?Set portal port}']
-    depends_on: [api]
-
-  security-auditor-portal:
-    <<: *dev-image
-    command: ["pnpm","--filter","@lhc/security-auditor-portal","exec","vite","--host","0.0.0.0","--port","${AUDITOR_PORT:?Set portal port}"]
-    environment:
-      VITE_OIDC_URL: ${VITE_OIDC_URL:?Set public OIDC URL}
-      VITE_OIDC_REALM: ${VITE_OIDC_REALM:?Set realm}
-      VITE_OIDC_CLIENT_ID: ${VITE_OIDC_CLIENT_ID:?Set OIDC public client ID}
-      VITE_API_URL: ${VITE_API_URL:?Set public API URL}
-    ports: ['127.0.0.1:${AUDITOR_PORT:?Set portal port}:${AUDITOR_PORT:?Set portal port}']
-    depends_on: [api]
-
-  researcher-portal:
-    <<: *dev-image
-    command: ["pnpm","--filter","@lhc/researcher-portal","exec","vite","--host","0.0.0.0","--port","${RESEARCHER_PORT:?Set portal port}"]
-    environment:
-      VITE_OIDC_URL: ${VITE_OIDC_URL:?Set public OIDC URL}
-      VITE_OIDC_REALM: ${VITE_OIDC_REALM:?Set realm}
-      VITE_OIDC_CLIENT_ID: ${VITE_OIDC_CLIENT_ID:?Set OIDC public client ID}
-      VITE_API_URL: ${VITE_API_URL:?Set public API URL}
-    ports: ['127.0.0.1:${RESEARCHER_PORT:?Set portal port}:${RESEARCHER_PORT:?Set portal port}']
-    depends_on: [api]
+      NEXT_PUBLIC_OIDC_URL: ${NEXT_PUBLIC_OIDC_URL:?Set public OIDC URL}
+      NEXT_PUBLIC_OIDC_REALM: ${NEXT_PUBLIC_OIDC_REALM:?Set OIDC realm}
+      NEXT_PUBLIC_OIDC_CLIENT_ID: ${NEXT_PUBLIC_OIDC_CLIENT_ID:?Set OIDC public client ID}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?Set browser API URL}
+      NEXT_PUBLIC_DEMO_PATIENT_ID: ${NEXT_PUBLIC_DEMO_PATIENT_ID:-}
+      NODE_ENV: development
+    ports:
+      - '127.0.0.1:${NEXT_PORT:?Set frontend port}:${NEXT_PORT:?Set frontend port}'
+    depends_on: [api, keycloak]

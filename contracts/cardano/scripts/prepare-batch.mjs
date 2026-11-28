@@ -3,7 +3,7 @@
 // Input: JSON array of *randomized 64-hex commitments*, never clinical records.
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { resolve, join } from 'node:path';
-import { makeMerkleBatch, cardanoAnchorMetadata } from '../../../packages/shared/src/merkle.ts';
+import { makeMerkleBatch, cardanoAnchorMetadata } from '../../../backend/packages/shared/src/merkle.ts';
 const [input, out] = process.argv.slice(2);
 if (!input || !out) {console.error('Usage: prepare-batch.mjs commitments.json output-dir');process.exit(2);}
 try {

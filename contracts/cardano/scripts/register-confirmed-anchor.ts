@@ -4,9 +4,9 @@
  */
 import 'dotenv/config';
 import { readFileSync } from 'node:fs';
-import { createPrismaClient } from '../../../packages/database/src/client';
-import { verifyBlockfrostAnchor } from '../../../packages/shared/src/cardano-verification';
-import { validateCompleteMerkleManifest, type InclusionProof } from '../../../packages/shared/src/merkle';
+import { createPrismaClient } from '../../../backend/packages/database/src/client';
+import { verifyBlockfrostAnchor } from '../../../backend/packages/shared/src/cardano-verification';
+import { validateCompleteMerkleManifest, type InclusionProof } from '../../../backend/packages/shared/src/merkle';
 const [manifestFile,txHash]=process.argv.slice(2);
 const key=process.env.BLOCKFROST_PREPROD_PROJECT_ID;
 if (!manifestFile || !/^[a-f0-9]{64}$/i.test(txHash||'') || !key)

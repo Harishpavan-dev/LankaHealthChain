@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {publicApiError} from '../../packages/shared/src/api-error.ts';
+import {publicApiError} from '../../backend/packages/shared/src/api-error.ts';
 const id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 test('API error model retains safe validation errors and request correlation',()=>{
  const err=publicApiError(400,{message:['patientId must be a UUID']},id);

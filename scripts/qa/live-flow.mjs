@@ -7,8 +7,8 @@
  */
 import {randomUUID} from 'node:crypto';
 const allowedHost = u => ['localhost','127.0.0.1','::1'].includes(new URL(u).hostname);
-const origin = process.env.LHC_SMOKE_API || process.env.VITE_API_URL?.replace(/\/api\/v1\/?$/, '') || (()=>{throw Error('Set LHC_SMOKE_API or VITE_API_URL')})();
-const kc = process.env.LHC_SMOKE_KEYCLOAK || process.env.VITE_OIDC_URL || (()=>{throw Error('Set LHC_SMOKE_KEYCLOAK or VITE_OIDC_URL')})();
+const origin = process.env.LHC_SMOKE_API || process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/v1\/?$/, '') || (()=>{throw Error('Set LHC_SMOKE_API or NEXT_PUBLIC_API_URL')})();
+const kc = process.env.LHC_SMOKE_KEYCLOAK || process.env.NEXT_PUBLIC_OIDC_URL || (()=>{throw Error('Set LHC_SMOKE_KEYCLOAK or NEXT_PUBLIC_OIDC_URL')})();
 if (process.env.LHC_ACCEPT_SYNTHETIC_WRITE !== 'YES') {
  console.error('Refusing synthetic DB writes. Explicitly set LHC_ACCEPT_SYNTHETIC_WRITE=YES');
  process.exit(2);
@@ -39,9 +39,32 @@ async function call(method,path,accessToken,body,expected=200,extraHeaders={}){
 }
 function verify(expr,message){if(!expr)throw new Error(message);}
 async function main(){
- const doctor=await token('doctor.venus',process.env.LHC_DEMO_DOCTOR_PASSWORD||(()=>{throw Error('LHC_DEMO_DOCTOR_PASSWORD is required')})());
- const patient=await token('patient.arun',process.env.LHC_DEMO_PATIENT_PASSWORD||(()=>{throw Error('LHC_DEMO_PATIENT_PASSWORD is required')})());
- const admin=await token('admin.network',process.env.LHC_DEMO_ADMIN_PASSWORD||(()=>{throw Error('LHC_DEMO_ADMIN_PASSWORD is required')})());
+ const frontendOrigin=process.env.WEB_BASE_URL;
+ for(const [body,status,code] of [
+   ['DEMO-FHIR',400,'BAD_REQUEST'],
+   [JSON.stringify({fixture:'x'.repeat(310000)}),413,'PAYLOAD_TOO_LARGE'],
+ ]){
+   const response=await fetch(`${base}/records`,{
+     method:'POST',redirect:'error',body,signal:AbortSignal.timeout(12000),
+     headers:{'Content-Type':'application/json',...(frontendOrigin?{Origin:frontendOrigin}:{})},
+   });
+   const raw=await response.text();
+   const error=JSON.parse(raw);
+   const correlationId=response.headers.get('x-request-id');
+   verify(response.status===status && error.code===code,`Invalid body did not produce ${code}`);
+   verify(correlationId && error.requestId===correlationId && response.headers.get('cache-control')==='no-store',
+     'Invalid body response is missing request correlation or cache protection');
+   verify(!raw.includes('DEMO-FHIR'),'Malformed JSON error echoed submitted data');
+   if(frontendOrigin){
+     verify(response.headers.get('access-control-allow-origin')===frontendOrigin &&
+       response.headers.get('access-control-expose-headers')?.toLowerCase().includes('x-request-id'),
+       'Frontend cannot read the invalid body response and request ID');
+   }
+ }
+ console.log('PASS: Malformed and oversized JSON errors are redacted, correlated and readable by the frontend');
+ const doctor=await token('doctor@example.invalid',process.env.LHC_DEMO_DOCTOR_PASSWORD||(()=>{throw Error('LHC_DEMO_DOCTOR_PASSWORD is required')})());
+ const patient=await token('patient@example.invalid',process.env.LHC_DEMO_PATIENT_PASSWORD||(()=>{throw Error('LHC_DEMO_PATIENT_PASSWORD is required')})());
+ const admin=await token('admin@example.invalid',process.env.LHC_DEMO_ADMIN_PASSWORD||(()=>{throw Error('LHC_DEMO_ADMIN_PASSWORD is required')})());
  console.log('PASS: Keycloak issued patient, doctor and administrator demo access tokens');
  const dependencyHealth=await call('GET','/admin/dependencies',admin);
  verify(dependencyHealth.status==='ready' && Array.isArray(dependencyHealth.hospitals) &&
@@ -58,6 +81,7 @@ async function main(){
  const retry=await call('POST','/access-requests',doctor,requestBody,201,{'Idempotency-Key':retryKey});
  verify(retry.id===requestId,'Identical retry created a duplicate request');
  await call('POST','/access-requests',doctor,{...requestBody,requestedDurationMinutes:11},409,{'Idempotency-Key':retryKey});
+ await call('POST','/access-requests',doctor,{...requestBody,patientId:randomUUID()},409,{'Idempotency-Key':retryKey});
  console.log('PASS: Doctor created scoped request; same-key retry deduplicated and changed body rejected');
  const doctorPage=await call('GET','/access-requests/mine/page?limit=1',doctor);
  verify(Array.isArray(doctorPage.items) && doctorPage.items.length===1,'Doctor request pagination failed');
@@ -87,15 +111,20 @@ async function main(){
  await call('GET',`/access-requests/${requestId}/records`,patient,undefined,403);
  console.log('PASS: Patient token cannot impersonate doctor');
  const observationId=`smoke-${randomUUID()}`;
- const created=await call('POST','/records',doctor,{patientId,resource:{
+ const write={patientId,resource:{
    resourceType:'Observation',id:observationId,status:'final',
    code:{coding:[{system:'http://loinc.org',code:'8480-6'}]},
    valueQuantity:{value:117,unit:'mmHg',system:'http://unitsofmeasure.org',code:'mm[Hg]'},
- }},201);
- verify(created.anchorStatus==='PENDING','New record should await Cardano anchoring');
+ }};
+ await call('POST','/records',doctor,{...write,resource:{...write.resource,id:'..'}},400);
+ const results=await Promise.all([call('POST','/records',doctor,write,201),call('POST','/records',doctor,write,201)]);
+ const [created,retried]=results;
+ verify(created.id===retried.id,'Concurrent writes created different record indexes');
+ verify(results.some(record=>record.anchorStatus==='PENDING'),'New record should await Cardano anchoring');
+ await call('POST','/records',doctor,{...write,resource:{...write.resource,valueQuantity:{...write.resource.valueQuantity,value:120}}},409);
  const timeline=await call('GET','/patients/me/timeline',patient);
- verify(Array.isArray(timeline)&&timeline.some(r=>r.id===created.id),'Synthetic record not indexed in patient timeline');
- console.log('PASS: Doctor write persisted and indexed at owning hospital');
+ verify(Array.isArray(timeline)&&timeline.filter(r=>r.id===created.id).length===1,'Synthetic record must appear once in patient timeline');
+ console.log('PASS: Concurrent doctor writes persisted once; invalid ID and conflicting content rejected');
  const page=await call('GET','/patients/me/timeline/page?limit=2',patient);
  verify(Array.isArray(page.items)&&page.items.length<=2,'Paginated timeline missing or invalid');
  console.log('PASS: Cursor-paginated patient timeline');

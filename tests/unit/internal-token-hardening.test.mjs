@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {issueRecordToken,verifyRecordToken} from '../../packages/shared/src/internal-token.ts';
+import {issueRecordToken,verifyRecordToken} from '../../backend/packages/shared/src/internal-token.ts';
 const secret='test-service-secret-with-32-chars-of-entropy-like-data';
 const base={hospitalCode:'northern',externalRecordId:'obs-001',localPatientId:'arun-n',resourceType:'Observation',version:1};
 test('scope gate rejects oversized, fake-hospital and malformed clinical tokens',()=>{

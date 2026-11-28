@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync,readdirSync } from 'node:fs';
-const base = new URL('../../packages/', import.meta.url);
+const base = new URL('../../backend/packages/', import.meta.url);
 const file = (path) => readFileSync(new URL(path,base),'utf8');
 const coreSchema=file('database/prisma/schema.prisma');
 const coreMigration=readdirSync(new URL('database/prisma/migrations/',base),{withFileTypes:true})

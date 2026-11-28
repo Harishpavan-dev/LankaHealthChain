@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {decisionDeadline,isRequestPendingAndLive} from '../../packages/shared/src/approval-policy.ts';
+import {decisionDeadline,isRequestPendingAndLive} from '../../backend/packages/shared/src/approval-policy.ts';
 const now=new Date('2026-11-22T10:00:00.000Z');
 test('new consent requests have a bounded decision deadline',()=>{
  assert.equal(decisionDeadline(now).toISOString(),'2026-11-23T10:00:00.000Z');

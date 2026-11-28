@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { makeMerkleBatch,verifyMerkleProof,cardanoAnchorMetadata } from '../../packages/shared/src/merkle.ts';
+import { makeMerkleBatch,verifyMerkleProof,cardanoAnchorMetadata } from '../../backend/packages/shared/src/merkle.ts';
 const h = x => createHash('sha256').update(x).digest('hex');
 test('single leaf proof verifies',()=>{const a=makeMerkleBatch([h('a')]);assert.equal(a.proofs.length,1);assert.equal(verifyMerkleProof(a.proofs[0],a.root),true);});
 test('odd and even batches have verifiable inclusions',()=>{for(let n of [2,3,4,5,7,8,9,17]){const a=makeMerkleBatch(Array.from({length:n},(_,i)=>h(String(i)))); for(const p of a.proofs)assert.equal(verifyMerkleProof(p,a.root),true);}});

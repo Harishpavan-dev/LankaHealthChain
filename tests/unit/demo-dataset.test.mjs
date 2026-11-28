@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { isSupportedFhirResource } from '../../packages/shared/src/fhir.ts';
-import { createCommitment, verifyCommitment } from '../../packages/shared/src/crypto.ts';
+import { isSupportedFhirResource } from '../../backend/packages/shared/src/fhir.ts';
+import { createCommitment, verifyCommitment } from '../../backend/packages/shared/src/crypto.ts';
 const fixture=JSON.parse(readFileSync(new URL('../../demo/fixtures/records.json',import.meta.url)));
 test('each simulated hospital contains valid synthetic resource envelopes', () => {
   assert.deepEqual(Object.keys(fixture).sort(), ['jaffna','northern','venus']);

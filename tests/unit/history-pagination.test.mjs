@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 const root=new URL('../../',import.meta.url);
 const load=name=>readFileSync(new URL(name,root),'utf8');
-const service=load('apps/api/src/modules/access.service.ts');
-const routes=load('apps/api/src/modules/access.controller.ts');
+const service=load('backend/apps/api/src/modules/access.service.ts');
+const routes=load('backend/apps/api/src/modules/access.controller.ts');
 const doc=JSON.parse(load('docs/api/openapi.json'));
 test('new history routes are actually delegated to scoped service functions',()=>{
  assert.match(routes,/@Get\('access-requests\/mine\/page'\)/);
@@ -30,14 +30,14 @@ test('OpenAPI adds true versioned cursor parameters and paged schemas',()=>{
  }
 });
 test('migration indexes match new schema definitions',()=>{
- const sql=load('packages/database/prisma/migrations/202611220011_history_pagination_indexes/migration.sql');
+ const sql=load('backend/packages/database/prisma/migrations/202611220011_history_pagination_indexes/migration.sql');
  assert.match(sql,/CREATE INDEX "AccessRequest_doctorId_createdAt_id_idx"/);
  assert.match(sql,/CREATE INDEX "Consent_patientId_createdAt_id_idx"/);
- const schema=load('packages/database/prisma/schema.prisma');
+ const schema=load('backend/packages/database/prisma/schema.prisma');
  assert.match(schema,/@@index\(\[doctorId, createdAt\(sort: Desc\), id\(sort: Desc\)\]\)/);
 });
 test('hospital readiness checks PostgreSQL rather than returning unconditional alive',()=>{
- const hospital=load('apps/hospital-simulator/src/main.ts');
+ const hospital=load('backend/apps/hospital-simulator/src/main.ts');
  assert.match(hospital,/@Get\('health\/ready'\)/);
  assert.match(hospital,/this\.database\.db\.\$queryRaw/);
  assert.match(hospital,/ServiceUnavailableException/);

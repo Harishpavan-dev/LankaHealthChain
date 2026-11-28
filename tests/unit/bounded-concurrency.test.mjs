@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mapBounded} from '../../packages/shared/src/bounded-concurrency.ts';
+import {mapBounded} from '../../backend/packages/shared/src/bounded-concurrency.ts';
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 test('large record batches stay at four in-flight hospital calls',async()=>{
  let active=0,max=0;const records=Array.from({length:37},(_,i)=>i);

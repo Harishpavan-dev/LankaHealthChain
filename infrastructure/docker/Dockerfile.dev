@@ -1,12 +1,15 @@
 # LOCAL DEMONSTRATION ONLY; intentionally uses dev servers, never expose to the Internet.
 FROM node:22.22.3-bookworm-slim
 WORKDIR /workspace
-ENV CI=true DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder HOSPITAL_DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
+ENV CI=true
 RUN corepack enable && corepack prepare pnpm@10.18.0 --activate
 COPY . .
-RUN pnpm install --no-frozen-lockfile \
+RUN --mount=type=cache,id=lhc-pnpm-10,target=/pnpm/store,sharing=locked \
+ --mount=type=cache,id=lhc-prisma-engine,target=/root/.cache/prisma,sharing=locked \
+ pnpm install --frozen-lockfile --prefer-offline --store-dir /pnpm/store \
  && pnpm --filter @lhc/shared build \
  && pnpm --filter @lhc/database build \
- && pnpm --filter @lhc/hospital-database build
+ && pnpm --filter @lhc/hospital-database build \
+ && pnpm --filter @lhc/worker build
 EXPOSE 3000
 CMD ["pnpm","--filter","@lhc/api","dev"]

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {parsePageLimit,parsePageCursor,pageResult} from '../../packages/shared/src/pagination.ts';
+import {parsePageLimit,parsePageCursor,pageResult} from '../../backend/packages/shared/src/pagination.ts';
 test('limit defaults to 25 and caps at 100',()=>{
  assert.equal(parsePageLimit(),25);
  assert.equal(parsePageLimit('100'),100);

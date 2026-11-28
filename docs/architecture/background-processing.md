@@ -59,7 +59,7 @@ flowchart TB
 
 A browser Service Worker caches assets or runs client-side event handling;
 it must **not** store medical records offline in this prototype.
-The new `apps/worker` is a separate Node.js server-side process.
+The new `backend/apps/worker` is a separate Node.js server-side process.
 
 ## Scale-out options
 

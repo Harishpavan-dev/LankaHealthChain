@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isSupportedFhirResource } from '../../packages/shared/src/fhir.ts';
+import { isSupportedFhirResource } from '../../backend/packages/shared/src/fhir.ts';
 test('FHIR envelope validates allowed resource types', () => {
   assert.equal(isSupportedFhirResource({ resourceType: 'Observation', id: 'obs-test-001', status: 'final', subject: { reference: 'Patient/test' } }), true);
   assert.equal(isSupportedFhirResource({ resourceType: 'Patient', status: 'final', subject: {} }), false);

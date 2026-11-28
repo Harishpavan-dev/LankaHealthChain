@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {createCommitment} from '../../packages/shared/src/crypto.ts';
-import {matchesExistingRecord} from '../../packages/shared/src/record-consistency.ts';
+import {createCommitment} from '../../backend/packages/shared/src/crypto.ts';
+import {matchesExistingRecord} from '../../backend/packages/shared/src/record-consistency.ts';
 const resource = { resourceType:'Observation', id:'synthetic-a',status:'final',subject:{reference:'Patient/demo-1'},code:{text:'Synthetic example'} };
 test('idempotent retry accepts only same patient, FHIR resource and original content',()=>{
  const proof=createCommitment(resource);

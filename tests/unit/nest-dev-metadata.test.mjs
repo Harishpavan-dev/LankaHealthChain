@@ -9,7 +9,7 @@ test('Nest development launchers preserve decorator metadata', () => {
  assert.equal(tsconfig.compilerOptions.experimentalDecorators,true);
  assert.equal(tsconfig.compilerOptions.emitDecoratorMetadata,true);
  for(const name of ['api','hospital-simulator']){
-  const manifest=JSON.parse(readFileSync(`apps/${name}/package.json`,'utf8'));
+  const manifest=JSON.parse(readFileSync(`backend/apps/${name}/package.json`,'utf8'));
   assert.match(manifest.scripts.dev,/ts-node\/register\/transpile-only/);
   assert.ok(manifest.devDependencies['ts-node']);
   assert.doesNotMatch(manifest.scripts.dev,/tsx/);

@@ -2,8 +2,8 @@
 /** Requires a LOCAL running Keycloak/NestJS/PostgreSQL synthetic demo stack.
  * Uses only synthetic identities. No live Cardano, Midnight or clinical PHI.
  */
-const base=process.env.LHC_SMOKE_API||process.env.VITE_API_URL?.replace(/\/api\/v1\/?$/,'')||(()=>{throw Error('Set LHC_SMOKE_API or VITE_API_URL')})();
-const kc=process.env.LHC_SMOKE_KEYCLOAK||process.env.VITE_OIDC_URL||(()=>{throw Error('Set LHC_SMOKE_KEYCLOAK or VITE_OIDC_URL')})();
+const base=process.env.LHC_SMOKE_API||process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/v1\/?$/,'')||(()=>{throw Error('Set LHC_SMOKE_API or NEXT_PUBLIC_API_URL')})();
+const kc=process.env.LHC_SMOKE_KEYCLOAK||process.env.NEXT_PUBLIC_OIDC_URL||(()=>{throw Error('Set LHC_SMOKE_KEYCLOAK or NEXT_PUBLIC_OIDC_URL')})();
 if(process.env.LHC_ACCEPT_SYNTHETIC_WRITE!=='YES')throw Error('Set LHC_ACCEPT_SYNTHETIC_WRITE=YES for demo governance writes');
 for(const uri of [base,kc])if(!['localhost','127.0.0.1','::1'].includes(new URL(uri).hostname))
  throw Error('Governance E2E restricted to loopback synthetic environment');
@@ -22,12 +22,12 @@ async function call(method,path,bearer,expected=200,body){
  if(response.status!==expected)throw Error(`${method} ${path.split('?')[0]}: expected ${expected}, received ${response.status}`);
  return response.json();
 }
-const patient=await token('patient.arun',requiredDemo('LHC_DEMO_PATIENT_PASSWORD'));
-const doctor=await token('doctor.venus',requiredDemo('LHC_DEMO_DOCTOR_PASSWORD'));
-const operator=await token('hospital.venus',requiredDemo('LHC_DEMO_HOSPITAL_PASSWORD'));
-const auditor=await token('auditor.demo',requiredDemo('LHC_DEMO_AUDITOR_PASSWORD'));
-const researcher=await token('researcher.demo',requiredDemo('LHC_DEMO_RESEARCHER_PASSWORD'));
-const admin=await token('admin.network',requiredDemo('LHC_DEMO_ADMIN_PASSWORD'));
+const patient=await token('patient@example.invalid',requiredDemo('LHC_DEMO_PATIENT_PASSWORD'));
+const doctor=await token('doctor@example.invalid',requiredDemo('LHC_DEMO_DOCTOR_PASSWORD'));
+const operator=await token('hospital.venus@example.invalid',requiredDemo('LHC_DEMO_HOSPITAL_PASSWORD'));
+const auditor=await token('auditor.demo@example.invalid',requiredDemo('LHC_DEMO_AUDITOR_PASSWORD'));
+const researcher=await token('researcher.demo@example.invalid',requiredDemo('LHC_DEMO_RESEARCHER_PASSWORD'));
+const admin=await token('admin@example.invalid',requiredDemo('LHC_DEMO_ADMIN_PASSWORD'));
 // Check the dedicated worker is alive and its telemetry has no clinical data.
 let workerState;
 for(let attempt=0;attempt<30;attempt++){
@@ -50,6 +50,13 @@ const overview=await call('GET','/hospital-admin/hospitals/venus/overview',opera
 if(overview.clinicalDataExposed!==false||overview.doctors<1)throw Error('Hospital overview invalid');
 const people=await call('GET','/hospital-admin/hospitals/venus/doctors/page?limit=10',operator);
 if(!people.items.length||typeof people.items[0].id!=='string')throw Error('Scoped doctor listing unavailable');
+const firstDoctor=people.items[0];
+const rosterStatus=firstDoctor.verified?(firstDoctor.active?'active':'inactive'):'unverified';
+const rosterSearch=new URLSearchParams({q:firstDoctor.displayName.slice(0,80),status:rosterStatus});
+const filtered=await call('GET',`/hospital-admin/hospitals/venus/doctors/page?${rosterSearch}`,operator);
+if(!filtered.items.some(doctor=>doctor.id===firstDoctor.id)||filtered.items.some(doctor=>'authSubject' in doctor))
+ throw Error('Scoped doctor search results or privacy are incorrect');
+await call('GET','/hospital-admin/hospitals/venus/doctors/page?q=one&q=two',operator,400);
 await call('GET','/patients/me/timeline',operator,403);
 await call('GET','/hospital-admin/hospitals/venus/overview',patient,403);
 console.log('PASS: Hospital administrator scoped to Venus only; no patient records');
@@ -68,18 +75,18 @@ await call('GET','/research/aggregates',patient,403);
 console.log('PASS: Researcher restricted to approved synthetic aggregate cells >=10');
 const operators=await call('GET','/admin/operators',admin);
 const scoped=operators.find(x=>x.authSubject==='44444444-4444-4444-8444-444444444444');
-if(!scoped)throw Error('Demo hospital operator missing');
+if(!scoped?.active)throw Error('An active demo hospital operator is required');
 const grants=await call('GET','/admin/research-grants',admin);
 const scopedGrant=grants.find(x=>x.authSubject==='66666666-6666-4666-8666-666666666666');
-if(!scopedGrant)throw Error('Synthetic researcher grant missing');
+if(!scopedGrant?.active)throw Error('An active synthetic researcher grant is required');
 await call('PATCH',`/admin/operators/${scoped.id}/status`,admin,200,{active:false});
-await call('GET','/hospital-admin/hospitals/venus/overview',operator,403);
-await call('PATCH',`/admin/operators/${scoped.id}/status`,admin,200,{active:true});
+try { await call('GET','/hospital-admin/hospitals/venus/overview',operator,403); }
+finally { await call('PATCH',`/admin/operators/${scoped.id}/status`,admin,200,{active:true}); }
 await call('GET','/hospital-admin/hospitals/venus/overview',operator,200);
 console.log('PASS: DB-backed hospital operator revocation/restore immediately enforced');
 await call('PATCH',`/admin/research-grants/${scopedGrant.id}/status`,admin,200,{active:false});
-await call('GET','/research/aggregates',researcher,403);
-await call('PATCH',`/admin/research-grants/${scopedGrant.id}/status`,admin,200,{active:true});
+try { await call('GET','/research/aggregates',researcher,403); }
+finally { await call('PATCH',`/admin/research-grants/${scopedGrant.id}/status`,admin,200,{active:true}); }
 await call('GET','/research/aggregates',researcher,200);
 console.log('PASS: DB-backed researcher revocation/restore immediately enforced');
 const auditEvents=await call('GET','/security-audit/admin-events/page?limit=10',auditor);

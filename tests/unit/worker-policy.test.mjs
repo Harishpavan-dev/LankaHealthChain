@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {parseWorkerPollMs,nextWorkerDelayMs,workerHealth,workerOperationalStatus,ANCHOR_WORKER_ID} from '../../packages/shared/src/worker-policy.ts';
+import {parseWorkerPollMs,nextWorkerDelayMs,workerHealth,workerOperationalStatus,ANCHOR_WORKER_ID} from '../../backend/packages/shared/src/worker-policy.ts';
 
 test('worker uses stable nonclinical identity and valid default polling',()=>{
  assert.equal(ANCHOR_WORKER_ID,'cardano-anchor-preparer');

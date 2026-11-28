@@ -548,7 +548,7 @@
           ]
         },
         "url": "{{baseUrl}}/api/v1/hospital-admin/hospitals/{{hospitalCode}}/doctors/page?limit=25",
-        "description": "List clinicians assigned to own hospital. Required role: hospital_admin. Local synthetic-data demo only."
+        "description": "Search clinicians assigned to own hospital. Required role: hospital_admin. Local synthetic-data demo only."
       }
     },
     {
@@ -572,7 +572,7 @@
           ]
         },
         "url": "{{baseUrl}}/api/v1/hospital-admin/hospitals/{{hospitalCode}}/doctors/{{doctorId}}",
-        "description": "Activate/deactivate and verify own hospital clinician. Required role: hospital_admin. Local synthetic-data demo only.",
+        "description": "Update the display name or access status of a clinician at the assigned hospital. Required role: hospital_admin. Local synthetic-data demo only.",
         "body": {
           "mode": "raw",
           "raw": "{\n  \"verified\": true\n}",

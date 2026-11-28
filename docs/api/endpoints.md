@@ -67,9 +67,9 @@ Full typed contracts, errors, security schemes and pagination parameters are mai
 |---|---|---|
 | GET | `/hospital-admin/hospitals` | hospital_admin; active DB membership |
 | GET | `/hospital-admin/hospitals/{code}/overview` | assigned hospital only |
-| GET | `/hospital-admin/hospitals/{code}/doctors/page` | assigned hospital only |
+| GET | `/hospital-admin/hospitals/{code}/doctors/page` | Assigned hospital. Filter by `q` for display name and by `status` for `active`, `inactive`, or `unverified`. |
 | POST | `/hospital-admin/hospitals/{code}/doctors` | assigned hospital; creates inactive/unverified clinician |
-| PATCH | `/hospital-admin/hospitals/{code}/doctors/{id}` | same hospital clinician; audit logged |
+| PATCH | `/hospital-admin/hospitals/{code}/doctors/{id}` | Update `displayName`, `active`, or `verified` for a clinician at the assigned hospital. Changes are audited. |
 | GET | `/hospital-admin/hospitals/{code}/audit/page` | own hospital, nonclinical events |
 | GET | `/security-audit/summary` | security_auditor; aggregate action/outcome |
 | GET | `/security-audit/events/page` | security_auditor; redacted access metadata |

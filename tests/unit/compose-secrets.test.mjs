@@ -10,9 +10,9 @@ function block(name){
 }
 test('shared app image no longer injects every database password into every portal',()=>{
  assert.doesNotMatch(text,/^\s+env_file:/m);
- for(const name of ['patient-portal','doctor-portal','admin-portal']){
+ for(const name of ['frontend']){
   const v=block(name);
-  assert.match(v,/VITE_OIDC_URL/);
+  assert.match(v,/NEXT_PUBLIC_OIDC_URL/);
   assert.doesNotMatch(v,/DATABASE_URL|TOKEN_SECRET|DB_PASSWORD|KEYCLOAK_ADMIN_PASSWORD/);
  }
 });

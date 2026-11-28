@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isConsentValid, validateRequestedTypes } from '../../packages/shared/src/authorization.ts';
+import { isConsentValid, validateRequestedTypes } from '../../backend/packages/shared/src/authorization.ts';
 
 const consent = {
   status: 'ACTIVE', patientId: 'patient-A', doctorId: 'doctor-B', hospitalId: 'hospital-C',

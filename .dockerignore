@@ -8,6 +8,8 @@ node_modules
 **/generated
 **/.next
 **/.turbo
+frontend/next-env.d.ts
+**/*.tsbuildinfo
 **/managed
 *.zip
 *.pem

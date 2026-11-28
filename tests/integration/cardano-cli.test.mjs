@@ -6,7 +6,8 @@ import {mkdtempSync,rmSync,readFileSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {spawnSync} from 'node:child_process';
-const root=new URL('../../',import.meta.url).pathname;
+import {fileURLToPath} from 'node:url';
+const root=fileURLToPath(new URL('../../',import.meta.url));
 const call=(script,args)=>spawnSync(process.execPath,['--experimental-strip-types',script,...args],{
  cwd:root,encoding:'utf8',timeout:10000,
 });

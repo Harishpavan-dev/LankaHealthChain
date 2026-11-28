@@ -6,12 +6,12 @@ This document describes the implemented source interfaces, **not a production cl
 
 | Role | UI | API | Effective authority |
 |---|---|---|---|
-| Patient | 5173 | `/api/v1/patients/me/*`, approve/revoke | Own synthetic records and consents |
-| Verified Doctor | 5174 | `/api/v1/access-requests`, `/records` | Own hospital records, cross-hospital reads with active scoped patient consent |
-| Network Administrator | 5175 | `/api/v1/admin/*` | Manage enrolled hospital operator assignments and synthetic research grants, view nonclinical operational metrics |
-| Hospital Administrator | 5176 | `/api/v1/hospital-admin/*` | Only assigned active hospital; enroll inactive clinicians; verify/activate its registered clinicians, own administrative audit |
-| Security Auditor | 5177 | `/api/v1/security-audit/*` | Read-only de-identified access and administrative audit events, no patient IDs or FHIR payloads |
-| Researcher | 5178 | `/api/v1/research/*` | DB-approved, not-expired synthetic grant; aggregate resource counts with cell sizes >= 10 only |
+| Patient | /patient | `/api/v1/patients/me/*`, approve/revoke | Own synthetic records and consents |
+| Verified Doctor | /doctor | `/api/v1/access-requests`, `/records` | Own hospital records, cross-hospital reads with active scoped patient consent |
+| Network Administrator | /admin | `/api/v1/admin/*` | Manage enrolled hospital operator assignments and synthetic research grants, view nonclinical operational metrics |
+| Hospital Administrator | /hospital-admin | `/api/v1/hospital-admin/*` | Only assigned active hospital; enroll inactive clinicians; verify/activate its registered clinicians, own administrative audit |
+| Security Auditor | /auditor | `/api/v1/security-audit/*` | Read-only de-identified access and administrative audit events, no patient IDs or FHIR payloads |
+| Researcher | /researcher | `/api/v1/research/*` | DB-approved, not-expired synthetic grant; aggregate resource counts with cell sizes >= 10 only |
 
 Research access is **disabled in production** until a legally and ethically approved governance design exists. `RESEARCH_MODE=synthetic-demo` is intentionally not available when `NODE_ENV=production`.
 
@@ -51,3 +51,4 @@ Network administrator assignment cannot itself grant an OIDC realm role. Keycloa
 - [ ] External security and clinical governance review, role provisioning and MFA
 - [ ] Cardano Preprod submission and confirmation, Midnight Compact compilation and ZK proof verification
 - [ ] Real-hospital interface agreements, privacy impact assessment and regulatory approval
+

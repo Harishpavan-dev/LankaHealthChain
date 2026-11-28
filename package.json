@@ -1,6 +1,6 @@
 {
   "name": "lankahealthchain",
-  "version": "0.11.0",
+  "version": "0.13.0",
   "private": true,
   "packageManager": "pnpm@10.18.0",
   "engines": {
@@ -9,9 +9,6 @@
   "scripts": {
     "dev:api": "pnpm --filter @lhc/api dev",
     "dev:hospital": "pnpm --filter @lhc/hospital-simulator dev",
-    "dev:patient": "pnpm --filter @lhc/patient-portal dev",
-    "dev:doctor": "pnpm --filter @lhc/doctor-portal dev",
-    "dev:admin": "pnpm --filter @lhc/admin-portal dev",
     "build": "turbo build",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
@@ -32,11 +29,10 @@
     "db:verify-isolation": "pnpm --filter @lhc/database db:verify-isolation",
     "docs:check": "node scripts/qa/verify-openapi.mjs && node --experimental-strip-types --test tests/unit/postman-contract.test.mjs",
     "docs:postman": "node scripts/qa/generate-postman.mjs",
-    "dev:hospital-admin": "pnpm --filter @lhc/hospital-admin-portal dev",
-    "dev:auditor": "pnpm --filter @lhc/security-auditor-portal dev",
-    "dev:researcher": "pnpm --filter @lhc/researcher-portal dev",
     "test:live-governance": "node scripts/qa/live-governance.mjs",
-    "config:audit": "node scripts/qa/config-audit.mjs"
+    "config:audit": "node scripts/qa/config-audit.mjs",
+    "dev:frontend": "pnpm --filter @lhc/frontend dev",
+    "build:frontend": "pnpm --filter @lhc/frontend build"
   },
   "devDependencies": {
     "typescript": "^5.9.0",

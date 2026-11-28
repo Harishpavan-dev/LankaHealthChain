@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readJsonResponseBounded} from '../../packages/shared/src/bounded-json.ts';
+import {readJsonResponseBounded} from '../../backend/packages/shared/src/bounded-json.ts';
 test('streams a bounded JSON response safely',async()=>{
  const body=new Response('{"resourceType":"Observation","id":"obs1"}');
  assert.deepEqual(await readJsonResponseBounded(body),{resourceType:'Observation',id:'obs1'});

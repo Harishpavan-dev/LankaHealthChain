@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {isActiveHospitalOperator,hasActiveResearchGrant,suppressSmallCells,RESEARCH_MIN_CELL,maskAuditEvent} from '../../packages/shared/src/governance.ts';
+import {isActiveHospitalOperator,hasActiveResearchGrant,suppressSmallCells,RESEARCH_MIN_CELL,maskAuditEvent} from '../../backend/packages/shared/src/governance.ts';
 const subject='demo-subject',hospital='venus-uuid';
 test('hospital operator scope fails closed for another hospital, another subject and revoked assignment',()=>{
  const op={authSubject:subject,hospitalId:hospital,active:true};

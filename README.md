@@ -1,117 +1,124 @@
-# LankaHealthChain — v0.11.0 (Synthetic Demonstration)
+# LankaHealthChain v0.13.0
 
-> **Clinical-use warning:** This is an open-source *research/hackathon prototype*. Only synthetic patient records are permitted. It is not a clinically validated system. Patient consent currently uses `local-demo`, **not Midnight ZK**. Cardano Merkle commitments have been verified offline, **not with a confirmed live Preprod transaction**. Do not connect real hospital systems or real patient information.
+**Next.js + NestJS Healthcare Interoperability Application — Frontend / Backend Repository Layout**
 
-## Purpose
+> This release supports synthetic records. See the [verification report](docs/testing/RELEASE_VERIFICATION_0.13.md) for the checks completed and the [acceptance checklist](docs/testing/deployment-checklist.md) for the remaining clinical deployment requirements.
 
-A privacy-conscious cross-hospital record-exchange **prototype** built with modular NestJS `/api/v1`, three independently credentialed hospital PostgreSQL services, six React portals, a background Cardano batch-preparation worker, and a version-controlled OpenAPI 3.1 contract.
+## Start here
 
-### Key design decisions
+1. Read the **[English Installation Guide](docs/installation-guide.md)**.
+2. Review the **[Project Structure](docs/project-structure.md)** to understand folder ownership.
+3. Run the local Docker demo with unique generated credentials (commands below).
+4. See the [API documentation](docs/api/README.md) and [current verification status](docs/testing/RELEASE_VERIFICATION_0.13.md).
 
-- **Backend first:** NestJS modular monolith; avoid unnecessary microservice orchestration for an unmeasured workload.
-- **Hospital isolation:** Northern, Jaffna and Venus are *synthetic simulators*, each with a separate database and scoped internal service tokens. Core API reads records only via their Hospital APIs.
-- **Trust boundaries:** JWT/OIDC identity, role/tenant/consent authorization in the backend, append-only audit, record integrity commitments, no patient data on public chains.
-- **Async work:** PostgreSQL outbox, dedicated worker, bounded polling, advisory lock, retry/backoff, dead-letter and health monitoring.
-- **Configurable deployments:** Core/portal/hospital ports, CORS allowlist, JWKS/issuer, internal/public URLs and Cardano metadata provider are supplied by environment variables. No application-runtime `localhost` or provider endpoint fallback.
-- **Minimum UI:** Six simple, responsive light-theme portals. No browser offline caching of patient data.
+## Easy-to-understand project layout
 
-## Architecture
-
-```mermaid
-flowchart TB
-  U[Six React role portals] --> API[NestJS /api/v1 + JWT/RBAC/consent]
-  API --> CORE[(Core PostgreSQL)]
-  API --> H1[Northern FHIR-like simulator] --> D1[(Hospital DB A)]
-  API --> H2[Jaffna FHIR-like simulator] --> D2[(Hospital DB B)]
-  API --> H3[Venus FHIR-like simulator] --> D3[(Hospital DB C)]
-  CORE --> W[Dedicated background anchor worker]
-  W --> OFF[Private offline Merkle batches]
-  API -. optional read-only verification .-> CARD[Cardano Preprod provider]
-  API -. future protected consent integration .-> MID[Midnight Compact / ZK]
+```text
+LankaHealthChain/
+├── frontend/                   # One Next.js App Router application
+│   ├── src/app/                # Six role routes + landing page
+│   ├── src/portal-pages/       # Migrated clinical dashboards
+│   └── src/lib/auth.ts         # Keycloak PKCE + authenticated API client
+├── backend/
+│   ├── apps/api/               # NestJS API (/api/v1)
+│   ├── apps/hospital-simulator/# Three isolated hospital deployments
+│   ├── apps/worker/            # Cardano Merkle batch preparation
+│   └── packages/               # Prisma databases + shared domain code
+├── contracts/                  # Cardano tools + Midnight draft contract
+├── infrastructure/             # Local Docker, Keycloak, PostgreSQL
+├── docs/                       # English technical documentation
+├── scripts/                    # Setup, migrations, quality checks
+├── tests/                      # Unit, protocol, synthetic integration
+├── .env.example
+├── pnpm-workspace.yaml
+└── package.json
 ```
 
-## Repository layout
+Frontend and backend are separate **folders within one monorepo**, not separate repositories. Shared pnpm workspace configuration remains at the root, allowing one dependency graph and consistent CI checks.
 
-| Path | Responsibility |
-|---|---|
-| `apps/api/` | Versioned NestJS API, authentication, permissions, institutional governance |
-| `apps/hospital-simulator/` | One reusable isolated Hospital API, deployed three times |
-| `apps/worker/` | Background Merkle preparation, recovery and operational health |
-| `apps/{patient,doctor,admin,hospital-admin,security-auditor,researcher}-portal/` | Six minimal React applications |
-| `packages/database/` | Core Prisma schema, migrations, identity/consent/audit/worker tables |
-| `packages/hospital-database/` | Reusable hospital schema and migration history |
-| `packages/shared/` | FHIR validation, cryptography, policy, URL/config validation |
-| `packages/web/` | Shared browser auth and UI |
-| `contracts/` | Cardano offline scripts and draft Midnight Compact contract |
-| `infrastructure/` | Development-only Docker Compose, PostgreSQL bootstrap, Keycloak *template* |
-| `scripts/qa/` | Offline checks, API contract, Postman generator and live-stack scripts |
-| `docs/api/` | 40-operation OpenAPI spec, authorization matrix and Postman collection |
+### Portals
 
-## Quick start — local synthetic environment only
+| Role workspace | Next.js source | URL path |
+| --- | --- | --- |
+| Patient | `frontend/src/app/patient` | `/patient` |
+| Doctor | `frontend/src/app/doctor` | `/doctor` |
+| Network Admin | `frontend/src/app/admin` | `/admin` |
+| Hospital Admin | `frontend/src/app/hospital-admin` | `/hospital-admin` |
+| Security Auditor | `frontend/src/app/auditor` | `/auditor` |
+| Researcher | `frontend/src/app/researcher` | `/researcher` |
 
-Requirements: **Node.js >=22.22.3**, Docker Desktop/Engine with Compose, Corepack/pnpm 10, and Internet access for first dependency/image download.
+### Backend services
 
-```bash
-# Run at repository root; never commit the generated .env or private/ directory.
+| Component | Folder | Purpose |
+| --- | --- | --- |
+| Core API | `backend/apps/api` | NestJS, OIDC/RBAC, records, scoped consent |
+| Hospital simulator | `backend/apps/hospital-simulator` | One reusable API, three separate database deployments |
+| Background worker | `backend/apps/worker` | PostgreSQL outbox, offline Merkle batch/retry/monitoring |
+| Core database package | `backend/packages/database` | Core Prisma schema, migrations and seed |
+| Hospital database package | `backend/packages/hospital-database` | Hospital Prisma schema and migrations |
+| Server shared utilities | `backend/packages/shared` | Validation, cryptography, FHIR, access policy |
+
+The core backend follows a **modular monolith architecture**. Hospital instances and the async preparation worker are separate services where isolation is useful; additional microservices are intentionally deferred until justified by actual performance and deployment needs.
+
+## Quick start — local development only
+
+Prerequisites: **Node.js 22.22.3+ (Node 22), Docker with Compose, Internet access** for first build. Docker Desktop with WSL2 backend is recommended on Windows.
+
+```shell
+# Run these commands at the repository root.
 node scripts/setup-local.mjs
 
-# Boot all services and run the source-provided migrations/seed process.
-docker compose --env-file .env \
-  -f infrastructure/docker/compose.yml \
-  -f infrastructure/docker/compose.app.yml up -d --build
+docker compose --env-file .env -f infrastructure/docker/compose.yml -f infrastructure/docker/compose.app.yml up -d --build
 
-docker compose --env-file .env \
-  -f infrastructure/docker/compose.yml \
-  -f infrastructure/docker/compose.app.yml ps
+docker compose --env-file .env -f infrastructure/docker/compose.yml -f infrastructure/docker/compose.app.yml ps
 ```
 
-`setup-local.mjs` creates unique passwords and service-token secrets and generates a private Keycloak realm with **six environment-based redirect origins and six random synthetic demo user passwords**. To regenerate the private Keycloak import file after authorized portal configuration changes, run `node scripts/generate-keycloak-realm.mjs` using the existing `.env`. Do **not** publish this generated realm. For production, replace the development Keycloak instance, authorization proof layer and synthetic user model entirely.
+The setup script creates **unique private local passwords** in `.env` and a **private generated Keycloak import** under `private/`. Neither should be pushed to GitHub. Default entry points are `http://localhost:3001/patient` (Patient), `/doctor` (Doctor), `/admin` (Admin), and `http://localhost:3000/api/docs` (development-only API docs). See the installation guide for the six routes, role usernames, migration checks, troubleshooting and PowerShell commands.
 
-**Important:** Existing `.env` files from v0.10.0 are not overwritten. Create a fresh local demo configuration or manually add the new required variables, then regenerate the realm. Host/Container endpoint variables are intentionally separate.
+The Docker Compose setup uses development-only services (`Keycloak start-dev`, Next.js dev server) and localhost-bound ports. **Do not deploy this Compose configuration directly to the Internet.**
 
-For native/manual processes, export variables from `.env` and supply each Hospital's own `PORT`, `HOSPITAL_DATABASE_URL` and `HOSPITAL_TOKEN_SECRET` independently. The easiest reproducible local run is Docker Compose.
+## Documentation
 
-See **[தமிழில் முழு Setup Guide](docs/setup-tamil.md)** for commands, URLs and failure diagnostics.
+- [Installation and Local Demo Guide](docs/installation-guide.md) — Requirements, setup, six logins, Docker, tests and troubleshooting.
+- [Project Structure](docs/project-structure.md) — Responsibilities of every top-level folder and workspace package.
+- [Frontend README](frontend/README.md) — One Next.js app, six routes and public browser configuration.
+- [Backend README](backend/README.md) — API, hospital simulators and preparation worker.
+- [OpenAPI Contract](docs/api/openapi.yaml) — API `/api/v1`, 40 source-documented operations.
+- [API Usage](docs/api/README.md) — Authentication, authorization matrix and Postman.
+- [Database Migration Guide](docs/database/migrations.md) — Core and hospital schema histories.
+- [Background Processing Architecture](docs/architecture/background-processing.md) — Outbox, locking and retry lifecycle.
+- [Deployment Acceptance Checklist](docs/testing/deployment-checklist.md) — Live tests required before deployment claims.
+- [v0.13.0 Verification Report](docs/testing/RELEASE_VERIFICATION_0.13.md) — Checks performed and known limitations.
 
-## API contract
+## Source-level quality checks
 
-All functional routes use **`/api/v1`**. Local URL is configured through `VITE_API_URL`; Swagger (development only) is `/api/docs`. Machine-readable contract: [`docs/api/openapi.json`](docs/api/openapi.json) / [`openapi.yaml`](docs/api/openapi.yaml). Test Postman collection: [`docs/api/lankahealthchain.postman_collection.json`](docs/api/lankahealthchain.postman_collection.json). Postman contains no access tokens, passwords or PHI.
-
-Authentication uses Keycloak OIDC with audience `lhc-api`; the browser PKCE public client receives no backend secret. `Idempotency-Key` is supported for doctor access requests; paginated endpoints are available for large histories. Backend rechecks doctor/hospital status and current consent before releasing requested records.
-
-## Tests and checks
-
-```bash
+```shell
 node scripts/qa/config-audit.mjs
 node --experimental-strip-types --test tests/unit/*.test.mjs
 node --experimental-strip-types --test tests/integration/*.test.mjs
 node scripts/qa/verify-openapi.mjs
-node scripts/qa/generate-postman.mjs
+```
 
-# Requires a real supported toolchain and installed packages:
+Full installation/build checks (requires matching Node and pnpm versions and online dependencies):
+
+```shell
 corepack enable
 corepack prepare pnpm@10.18.0 --activate
-pnpm install
+pnpm install --frozen-lockfile
+# Export the four required NEXT_PUBLIC_* build variables from the installation guide.
 pnpm build
+pnpm check:syntax
 ```
 
-**Live Docker smoke / isolation tests** (synthetic demo only; tests write synthetic data):
+Follow the [installation guide](docs/installation-guide.md) to run the synthetic stack and test record writes.
 
-```bash
-set -a; . ./.env; set +a
-node scripts/qa/live-smoke.mjs
-LHC_ACCEPT_SYNTHETIC_WRITE=YES node scripts/qa/live-flow.mjs
-LHC_ACCEPT_SYNTHETIC_WRITE=YES node scripts/qa/live-governance.mjs
-```
+## Privacy and development boundaries
 
-The source contains **15 Core SQL migration files and 3 reusable Hospital migration files**. They must be **executed and checked on PostgreSQL** before marking database integration complete. GitHub CI workflows provide additional executable checks but their successful status is not implied by source review.
+- **No real patient information** is included or permitted in this development environment.
+- Medical records remain in separate hospital databases and are not written to the public chain.
+- Backend authorization is rechecked before accessing scoped records; synthetic `local-demo` consent is not a production replacement for verified blockchain consent.
+- The worker prepares Merkle commitments offline and does not require wallet signing keys.
+- Browser applications must not receive server secrets. All provider endpoints, browser origins and hospital URLs are configurable through environment variables.
+- Real deployment requires TLS, secure identity infrastructure, backup/restore testing, monitoring, live blockchain integration, and independent clinical/privacy/security approval.
 
-## Deployment & security restrictions
-
-`infrastructure/docker/*` is **development-only** (`Keycloak start-dev`, Vite dev servers, localhost-bound public ports). The proof-server profile is optional. `.env`, secrets, signed keys, private Merkle proofs and generated Keycloak imports must not enter a public repository. Production HTTP must use TLS and tested external identity infrastructure. For actual healthcare use, clinical conformance, encrypted patient identity mapping, hospital agreements, approvals, PDPA compliance review, external security assessment and operational readiness are still required.
-
-**Verification limitations:** The current environment cannot install the npm toolchain or run Docker, PostgreSQL migrations, browser E2E, Cardano Preprod submissions or Midnight proof generation. The offline QA results do not imply any of those are complete.
-
-Full status: [`docs/testing/RELEASE_VERIFICATION_0.11.md`](docs/testing/RELEASE_VERIFICATION_0.11.md), [deployment checklist](docs/testing/deployment-checklist.md), [implementation plan](docs/architecture/submission-hardening-plan.md).
-
-License: Apache 2.0. See `SECURITY.md` and `CONTRIBUTING.md`.
+License: Apache-2.0; see [`LICENSE`](LICENSE), [`SECURITY.md`](SECURITY.md), and [`CONTRIBUTING.md`](CONTRIBUTING.md).

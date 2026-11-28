@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { canonicalJson, createCommitment, computeCommitment, verifyCommitment } from '../../packages/shared/src/crypto.ts';
+import { canonicalJson, createCommitment, computeCommitment, verifyCommitment } from '../../backend/packages/shared/src/crypto.ts';
 
 test('canonical JSON stable under key ordering', () => {
   assert.equal(canonicalJson({ b: 2, a: { y: 3, x: 1 } }), canonicalJson({ a: { x: 1, y: 3 }, b: 2 }));

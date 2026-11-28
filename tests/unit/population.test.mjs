@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {isSupportedFhirResource} from '../../packages/shared/src/fhir.ts';
+import {isSupportedFhirResource} from '../../backend/packages/shared/src/fhir.ts';
 const data=JSON.parse(readFileSync(new URL('../../demo/fixtures/population.json',import.meta.url),'utf8'));
 test('exactly 100 synthetic patients and 500 synthetic FHIR resources',()=>{
  assert.equal(data.patients.length,100);

@@ -9,8 +9,8 @@ const doc=JSON.parse(get('docs/api/openapi.json'));
 function fail(s){throw new Error(s);}
 if(doc.openapi!=='3.1.0')fail('Expected OpenAPI 3.1');
 const routeMap=new Map();
-for(const name of readdirSync(new URL('apps/api/src/modules/',base)).filter(x=>x.endsWith('.controller.ts')).concat(['health.controller.ts'])){
- const file=name==='health.controller.ts'?'apps/api/src/health.controller.ts':`apps/api/src/modules/${name}`;
+for(const name of readdirSync(new URL('backend/apps/api/src/modules/',base)).filter(x=>x.endsWith('.controller.ts')).concat(['health.controller.ts'])){
+ const file=name==='health.controller.ts'?'backend/apps/api/src/health.controller.ts':`backend/apps/api/src/modules/${name}`;
  const code=get(file);
  const ctrl=code.match(/@Controller\(([^)]*)\)/);
  if(!ctrl) fail(`Missing controller annotation in ${file}`);

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { issueRecordToken, verifyRecordToken } from '../../packages/shared/src/internal-token.ts';
+import { issueRecordToken, verifyRecordToken } from '../../backend/packages/shared/src/internal-token.ts';
 const secret = 'development-only-long-secret-0123456789-ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 const claims = { hospitalCode:'northern', externalRecordId: 'blood-001', localPatientId: 'local-arun-n', resourceType: 'Observation', version: 1 };
 test('internal record token valid and scoped', () => {

@@ -1,8 +1,8 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {makeMerkleBatch} from '../../packages/shared/src/merkle.ts';
-import {verifyBlockfrostAnchor,checkPreprodAnchor} from '../../packages/shared/src/cardano-verification.ts';
+import {makeMerkleBatch} from '../../backend/packages/shared/src/merkle.ts';
+import {verifyBlockfrostAnchor,checkPreprodAnchor} from '../../backend/packages/shared/src/cardano-verification.ts';
 const hash=x=>createHash('sha256').update(x).digest('hex');
 const batch=makeMerkleBatch([hash('one'),hash('two'),hash('three')]);
 const blockfrost=[{label:'1900',json_metadata:{v:1,alg:'LHC_SHA256_MERKLE_V1',root:batch.root,count:3}}];

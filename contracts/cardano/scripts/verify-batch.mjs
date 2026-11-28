@@ -2,7 +2,7 @@
 // Verify an inclusion proof against a provided Cardano metadata JSON file.
 // On-chain confirmation must be checked separately against Cardano preprod.
 import { readFileSync } from 'node:fs';
-import { verifyMerkleProofWithCount,validatePublicCardanoMetadata,validateCompleteMerkleManifest } from '../../../packages/shared/src/merkle.ts';
+import { verifyMerkleProofWithCount,validatePublicCardanoMetadata,validateCompleteMerkleManifest } from '../../../backend/packages/shared/src/merkle.ts';
 const [proofFile,metadataFile,index='0'] = process.argv.slice(2);
 if (!proofFile || !metadataFile) {console.error('Usage: verify-batch.mjs private-inclusion-proofs.json cardano-metadata.json index'); process.exit(2);}
 try {

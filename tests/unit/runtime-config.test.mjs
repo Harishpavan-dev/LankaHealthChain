@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {cardanoMetadataUrl,configuredHttpBase,parseCorsOrigins,parseListenPort,requiredConfig} from '../../packages/shared/src/runtime-config.ts';
+import {cardanoMetadataUrl,configuredHttpBase,parseCorsOrigins,parseListenPort,requiredConfig} from '../../backend/packages/shared/src/runtime-config.ts';
 
 test('environment values reject missing and unfilled secrets',()=>{
  assert.equal(requiredConfig('HELLO',{HELLO:'value'}),'value');

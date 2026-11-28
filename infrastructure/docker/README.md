@@ -1,7 +1,5 @@
 # Local infrastructure
 
-From repository root: `docker compose --env-file .env -f infrastructure/docker/compose.yml up -d`.
-All host ports are loopback-only. Do not publicly expose demo Keycloak (static demo users).
-Each hospital database is separately owned, as created by the postgres initializer.
-The core and hospital simulators run locally using pnpm commands in the root README.
-Reset only throwaway data: `docker compose -f infrastructure/docker/compose.yml down -v`.
+Follow the local installation guide to generate disposable credentials and start the stack. Published ports bind to loopback, and each hospital runs against a separately owned PostgreSQL database. [Installation guide](../../docs/installation-guide.md)
+
+The standalone Next.js image uses browser-facing build arguments and a non-root runtime. [Frontend release image](../../frontend/README.md)

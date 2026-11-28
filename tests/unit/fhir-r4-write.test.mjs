@@ -1,7 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {fhirPatientReference,bindFhirPatient,isSupportedFhirResource,validateDemoClinicalWrite} from '../../packages/shared/src/fhir.ts';
+import {fhirPatientReference,bindFhirPatient,isFhirRecordId,isSupportedFhirResource,validateDemoClinicalWrite} from '../../backend/packages/shared/src/fhir.ts';
 const local='synthetic-123';
+test('record IDs must survive use as a single hospital URL segment',()=>{
+ assert.equal(isFhirRecordId('synthetic.v1-2_3'),true);
+ for (const id of ['.','..','a/b','a%2Fb','',12,null]) {
+  assert.equal(isFhirRecordId(id),false);
+  assert.equal(validateDemoClinicalWrite({resourceType:'Condition',id,subject:{reference:'Patient/test'},code:{text:'Synthetic'}}),false);
+ }
+});
 test('FHIR R4 AllergyIntolerance uses patient instead of subject',()=>{
  const original={resourceType:'AllergyIntolerance',id:'allergy-01',subject:{reference:'Patient/attacker'},code:{text:'Synthetic drug allergy'}};
  const bound=bindFhirPatient(original,local);

@@ -1,0 +1,17 @@
+{
+  "name": "@lhc/worker",
+  "version": "0.13.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepare:anchors": "node dist/prepare-anchors.js",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "start": "node dist/anchor-worker.js"
+  },
+  "dependencies": {
+    "@lhc/database": "workspace:*",
+    "@lhc/shared": "workspace:*",
+    "dotenv": "^16.4.0"
+  }
+}

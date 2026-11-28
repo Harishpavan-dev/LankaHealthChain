@@ -1,4 +1,4 @@
-> **v0.11.0**: 40 implemented source-level API operations, including institution governance, de-identified security audits and synthetic-only research aggregates. Full running-server conformance tests still pending.
+> **v0.12.0**: 40 implemented source-level API operations, including institution governance, de-identified security audits and synthetic-only research aggregates. Full running-server conformance tests still pending.
 
 # HTTP API v1 – Developer documentation
 
@@ -47,7 +47,7 @@ The three hospitals are simulated integrations, not real healthcare institution 
 
 Run `node scripts/qa/verify-openapi.mjs` to check every implemented NestJS endpoint has a matching operation and that OpenAPI references and security requirements are valid. This is **static contract QA**, not a live HTTP test.
 
-Swagger UI development route `/api/docs` now serves the version-controlled `openapi.json`. It is not enabled for production mode.
+Swagger UI development route `/api/docs` now serves the version-controlled `openapi.json`. It is not enabled for production mode. 
 
 ## v0.7 additional history pagination
 
@@ -99,6 +99,6 @@ replaying dead-letter work. The service **never signs transactions**.
 
 ## Deployment configuration (v0.11.0)
 
-All real runtime endpoints and ports come from `.env`, not source code. In particular, `CORS_ORIGINS`, `PORT`, `HOSPITAL_*_PORT`, `HOSPITAL_*_INTERNAL_URL`, `OIDC_ISSUER`, `OIDC_JWKS_INTERNAL_URL`, `VITE_API_URL`, `VITE_OIDC_URL`, and `CARDANO_METADATA_API_BASE_URL` are configurable. The Swagger `servers` entry remains a **documentation-only local demonstration example** and is not an application runtime default. The Postman `baseUrl` variable should be changed to match your authorized test environment.
+All real runtime endpoints and ports come from `.env`, not source code. In particular, `CORS_ORIGINS`, `PORT`, `HOSPITAL_*_PORT`, `HOSPITAL_*_INTERNAL_URL`, `OIDC_ISSUER`, `OIDC_JWKS_INTERNAL_URL`, `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_OIDC_URL`, and `CARDANO_METADATA_API_BASE_URL` are configurable. The Swagger `servers` entry remains a **documentation-only local demonstration example** and is not an application runtime default. The Postman `baseUrl` variable should be changed to match your authorized test environment.
 
 Keycloak demo account passwords and six redirect origins are generated into private runtime data via `node scripts/setup-local.mjs`. No production login or clinical proof integration is implied.
